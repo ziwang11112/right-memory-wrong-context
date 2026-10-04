@@ -29,7 +29,7 @@ REQUIRED_COLUMNS = {
     "n",
     "notes",
 }
-REQUIRED_CLAIMS = {f"C{number}" for number in range(2, 16)}
+REQUIRED_CLAIMS = {f"C{number}" for number in range(2, 15)}
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 PROHIBITED_OUTPUT_LABELS = {"ncr_threshold", "ncr_a5"}
 EXPECTED_METRIC_COUNTS = {
@@ -46,7 +46,6 @@ EXPECTED_METRIC_COUNTS = {
     "C12": 5,
     "C13": 34,
     "C14": 16,
-    "C15": 12,
 }
 
 
@@ -224,7 +223,7 @@ def _contract_value_path(row: Mapping[str, str]) -> tuple[str, ...] | None:
             "gpt-5.6-luna": "gpt_5_6_luna",
         }.get(row["source"])
         return (reader, contrast, metric) if reader else None
-    if claim_id in {"C14", "C15"}:
+    if claim_id == "C14":
         return (contrast, metric)
     if claim_id in {"C9", "C10", "C11"}:
         return (contrast, metric)

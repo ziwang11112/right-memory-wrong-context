@@ -21,7 +21,6 @@ reader prompts, raw provider responses, embeddings, or credentials.
 | `natural_end_to_end_gpt_luna_judged/` | Sequential GPT-reader replication | Main table, paired deltas, completion receipt, summary, manifest |
 | `natural_end_to_end_case_audit/` | Content-free case-level natural closure audit | Tokenized case scores, source-specific intervals, case-weighted sensitivity, population summary, manifest |
 | `natural_cross_judge_audit/` | Outcome-independent 200-output alternate-judge audit | Agreement, confusion, subgroup, usage, summary, manifest |
-| `human_label_audit/` | Paper-reported human repeatability on 207 record-query pairs | Four-axis aggregate summary and source manifest; raw labels are not released |
 
 ## Verification
 
@@ -39,7 +38,6 @@ uv run --extra dev python -m scripts.publish_supplemental_results verify
 uv run --extra dev python -m scripts.publish_counterfactual_exposure_results verify
 uv run --extra dev python -m scripts.publish_claude_opus5_exposure_results verify
 uv run --extra dev python -m scripts.publish_natural_case_audit verify
-uv run --locked --extra dev python -m scripts.publish_human_label_audit verify
 uv run --extra dev python -m pytest tests/test_posthoc_robustness_results.py
 uv run --extra dev python -m pytest tests/test_policy_axis_sensitivity.py
 uv run --extra dev python -m pytest tests/test_submission_diagnostic_results.py

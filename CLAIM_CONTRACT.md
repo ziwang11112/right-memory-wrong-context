@@ -538,33 +538,6 @@ alternate judge. It does not re-score the full natural closure, re-estimate rout
 reader effects, or remove the shared-primary-judge limitation from C13. Reader
 effects remain separate and are never pooled.
 
-## Human-label Repeatability Audit
-
-### C15: Reported pre-adjudication human agreement
-
-**Status:** Reported aggregate release, with no independent raw-label reconstruction.
-
-Two independent human annotators assessed 207 record-query pairs across 20 blinded
-packets. This sampled record-label audit is distinct from C14's model-judge audit.
-
-| Axis | Exact agreement | Nominal Krippendorff alpha |
-| --- | ---: | ---: |
-| Relevance | 0.893720 | 0.813525 |
-| Scope | 0.995169 | 0.980820 |
-| Lifecycle state | 0.859903 | 0.670310 |
-| Prohibited status | 0.884058 | 0.082902 |
-
-**Allowed:** Report the paper's pre-adjudication agreement separately by axis.
-Public aggregates, count arithmetic and source hashes can be checked offline.
-
-**Forbidden:** Do not call the public summary an independent reannotation or
-raw-label replication, claim all axes have strong agreement, or use the historical
-lifecycle-free usable_evidence composite to validate current usability semantics.
-
-**Boundary:** Independent raw labels and packet text are unavailable in the public
-package; alpha values are imported reported statistics. This sample is not
-full-population human gold. No confidence intervals or new human labels are created.
-
 ## Reporting Rule
 
 Every empirical statement derived from this repository must map to one claim ID.

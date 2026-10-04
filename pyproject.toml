@@ -18,9 +18,9 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/ziwang11112/verify-agent-memory"
-Documentation = "https://github.com/ziwang11112/verify-agent-memory/blob/main/REPRODUCIBILITY.md"
-Issues = "https://github.com/ziwang11112/verify-agent-memory/issues"
+Repository = "https://github.com/ziwang11112/right-memory-wrong-context"
+Documentation = "https://github.com/ziwang11112/right-memory-wrong-context/blob/main/REPRODUCIBILITY.md"
+Issues = "https://github.com/ziwang11112/right-memory-wrong-context/issues"
 
 [project.optional-dependencies]
 dev = [

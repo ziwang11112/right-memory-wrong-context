@@ -6,8 +6,8 @@ access. All commands are run from the repository root.
 
 The accompanying paper is **The Right Memory in the Wrong Context: Verifying
 Retrieval Admissibility in Long-Term Agent Memory**. The
-[paper alignment map](docs/PAPER_ALIGNMENT.md) identifies each evaluation population,
-its public assets, and the remaining gaps between this release and the manuscript.
+[experiment guide](docs/PAPER_ALIGNMENT.md) maps the core evaluations to their
+implementations and released assets.
 Passing file-integrity checks establishes agreement with the released snapshot; it
 does not by itself independently validate the original labels or model responses.
 
@@ -38,7 +38,6 @@ uv run --extra dev python -m ruff format --check .
 uv run --extra dev python scripts/check_claim_contract.py
 uv run --extra dev python scripts/verify_evidence.py
 uv run --extra dev python -m scripts.check_reproducibility_package
-uv run --extra dev python -m scripts.publish_human_label_audit verify
 ```
 
 The checks validate schemas, formulas, frozen settings, source hashes, normalized
@@ -198,12 +197,10 @@ runners construct requests from supplied materialized cases and enforce complete
 bundle, cost-cap, and frozen-contract requirements. Credentials remain local to the
 researcher; historical execution receipts do not unlock a new paid run.
 
-The paper's human label-repeatability audit is a separate boundary: published
-aggregate agreement values can be checked against the
-[released audit summary](results/human_label_audit/), but
-the two independent reviewers' original labels are not included. The 200-output
-alternate-model-judge audit evaluates a different population and does not substitute
-for those human labels. See the alignment map for both assets.
+Independent human-annotation evidence is outside this release's validated scope.
+The 200-output alternate-model-judge audit evaluates model outputs and is a
+separate analysis. See the [experiment guide](docs/PAPER_ALIGNMENT.md) for the
+implemented evaluations and their reproduction boundaries.
 
 ## 7. Directory Contract
 

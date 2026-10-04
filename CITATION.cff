@@ -21,8 +21,8 @@ authors:
   - family-names: Xu
     given-names: Xiaowei
     affiliation: University of Arkansas at Little Rock
-repository-code: "https://github.com/ziwang11112/verify-agent-memory"
-url: "https://github.com/ziwang11112/verify-agent-memory"
+repository-code: "https://github.com/ziwang11112/right-memory-wrong-context"
+url: "https://github.com/ziwang11112/right-memory-wrong-context"
 license: MIT
 abstract: >-
   Evaluation code, frozen protocols, content-free evidence derivatives, and

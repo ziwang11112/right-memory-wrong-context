@@ -52,6 +52,7 @@ The package check verifies those receipts without requiring Git. See
 """
 EXCLUDED_SUFFIXES = {".key", ".pem", ".pyc"}
 PRIVATE_HANDLE = "zi" + "wang11112"
+PUBLIC_REPOSITORY_NAME_PATTERN = r"\bright-memory-wrong-context\b"
 PRIVATE_NAME_PATTERN = r"zi" + r"\s+" + "wang"
 PAPER_AUTHOR_PATTERN = r"\b(?:Xingqiao\s+Wang|Emmanuel\s+Addai|Devika\s+Ambekar|Xiaowei\s+Xu)\b"
 PRIVATE_USERNAME_PATTERN = r"\bzi" + r"wan\b"
@@ -61,6 +62,11 @@ PRIVATE_INSTITUTION_SHORT_PATTERN = r"\bUA" + r"LR\b"
 PRIVATE_WORKSPACE_PATTERN = r"\bD:[\\/]agent-mem\b"
 CITATION_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\((?:\.\.?/)?CITATION\.cff\)", re.IGNORECASE)
 IDENTITY_REPLACEMENTS = (
+    (
+        "public repository name",
+        re.compile(PUBLIC_REPOSITORY_NAME_PATTERN, re.IGNORECASE),
+        "verify-agent-memory",
+    ),
     ("private repository handle", re.compile(PRIVATE_HANDLE, re.IGNORECASE), "anonymous"),
     ("private owner name", re.compile(PRIVATE_NAME_PATTERN, re.IGNORECASE), "Anonymous Owner"),
     ("paper author", re.compile(PAPER_AUTHOR_PATTERN, re.IGNORECASE), "Anonymous Author"),

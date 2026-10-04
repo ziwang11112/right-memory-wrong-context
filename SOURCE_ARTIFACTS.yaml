@@ -989,14 +989,3 @@ artifacts:
     transformation_required: "Preserve exact route hashes, implementation commit, parity counts, and zero-call boundaries."
     public_label: "submission diagnostic provenance"
     contains_raw_text_or_private_content: false
-
-  - id: human_label_agreement_summary
-    category: IMPORT_AS_FROZEN_AGGREGATE
-    old_repository: ziwang11112/bomi
-    frozen_commit: a28093110325968c26906223e9eb0f1e078f6aad
-    source_path: reports/stage3_admissibility_label_suite/human_agreement_summary.json
-    source_sha256: 2ecca3d86789f5061c362a17acef9ca39163ecff647470f2c3deeed18fe0a90f
-    intended_normalized_destination: evidence/normalized/human_label_audit.csv
-    transformation_required: Select only relevance, scope, lifecycle state and prohibited-status aggregates. Drop reviewer-identifier hashes and the legacy lifecycle-free usability composite. Preserve raw-label recomputation limitation.
-    public_label: reported human-label repeatability audit
-    contains_raw_text_or_private_content: true

@@ -25,9 +25,6 @@ REQUIRED_PATHS = {
     "data/upstream_sources.json",
     "experiments/README.md",
     "results/README.md",
-    "results/human_label_audit/README.md",
-    "results/human_label_audit/summary.csv",
-    "results/human_label_audit/manifest.json",
     "results/natural_end_to_end_case_audit/README.md",
     "results/natural_end_to_end_case_audit/case_scores.csv",
     "results/natural_end_to_end_case_audit/case_weighted_sensitivity.csv",
@@ -35,8 +32,6 @@ REQUIRED_PATHS = {
     "results/natural_end_to_end_case_audit/population_summary.csv",
     "results/natural_end_to_end_case_audit/source_specific_deltas.csv",
     "evidence/README.md",
-    "evidence/normalized/human_label_audit.csv",
-    "evidence/manifests/human_label_audit.json",
     "tests/fixtures/retrieval_cases.jsonl",
 }
 FORBIDDEN_PREFIXES = (

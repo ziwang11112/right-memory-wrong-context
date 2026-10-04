@@ -14,7 +14,10 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def test_anonymous_export_redacts_identity_and_repairs_manifest(tmp_path: Path) -> None:
+@pytest.mark.parametrize("repository_slug", ["verify-agent-memory", "right-memory-wrong-context"])
+def test_anonymous_export_redacts_identity_and_repairs_manifest(
+    tmp_path: Path, repository_slug: str
+) -> None:
     repository = tmp_path / "repository"
     output = tmp_path / "artifact"
     script = repository / "scripts" / "import_evidence.py"
@@ -31,11 +34,11 @@ def test_anonymous_export_redacts_identity_and_repairs_manifest(tmp_path: Path) 
     private_institution = "University of " + "Arkansas at Little Rock"
     private_institution_short = "UA" + "LR"
     private_workspace = "D:\\" + "agent" + "-mem"
-    script.write_text(f'SOURCE = "{private_handle}/verify-agent-memory"\n', encoding="utf-8")
+    script.write_text(f'SOURCE = "{private_handle}/{repository_slug}"\n', encoding="utf-8")
     manifest.write_text(
         json.dumps(
             {
-                "source_repository": f"{private_handle}/verify-agent-memory",
+                "source_repository": f"{private_handle}/{repository_slug}",
                 "transformation_script": "scripts/import_evidence.py",
                 "transformation_script_sha256": "0" * 64,
             }
@@ -50,6 +53,8 @@ def test_anonymous_export_redacts_identity_and_repairs_manifest(tmp_path: Path) 
                 f"Institution: {private_institution} ({private_institution_short})",
                 f"Home: C:\\Users\\{private_username}",
                 f"Workspace: {private_workspace}\\verify-agent-memory",
+                f"Repository: https://github.com/{private_handle}/{repository_slug}",
+                f"Checkout: cd {repository_slug}",
             )
         )
         + "\n",
@@ -79,6 +84,9 @@ def test_anonymous_export_redacts_identity_and_repairs_manifest(tmp_path: Path) 
     assert private_institution not in exported_readme
     assert private_institution_short.lower() not in exported_readme.lower()
     assert private_workspace not in exported_readme
+    assert "Repository: https://github.com/anonymous/verify-agent-memory" in exported_readme
+    assert "Checkout: cd verify-agent-memory" in exported_readme
+    assert "right-memory-wrong-context" not in exported_readme
     assert not (output / ".github").exists()
     assert not (output / ".env").exists()
     exported_manifest = json.loads(
@@ -145,6 +153,7 @@ def test_anonymous_export_removes_public_citation_and_redacts_all_authors(tmp_pa
     exported_metadata = (output / "pyproject.toml").read_text(encoding="utf-8")
     assert all(f"{first} {last}" not in exported_metadata for first, last in names)
     exported_authors = tomllib.loads(exported_metadata)["project"]["authors"]
+    assert tomllib.loads(exported_metadata)["project"]["name"] == "verify-agent-memory"
     assert len(exported_authors) == len(names)
     assert all(author["name"].startswith("Anonymous ") for author in exported_authors)
 

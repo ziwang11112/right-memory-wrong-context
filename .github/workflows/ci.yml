@@ -34,8 +34,6 @@ jobs:
         run: uv run --no-sync python -m scripts.check_claim_contract
       - name: Normalized evidence
         run: uv run --no-sync python -m scripts.verify_evidence
-      - name: Human label audit snapshot
-        run: uv run --no-sync python -m scripts.publish_human_label_audit verify
       - name: Reproducibility package
         run: uv run --no-sync python -m scripts.check_reproducibility_package
       - name: Anonymous export
@@ -49,5 +47,4 @@ jobs:
           uv run --no-sync python -m ruff format --check .
           uv run --no-sync python -m scripts.check_claim_contract
           uv run --no-sync python -m scripts.verify_evidence
-          uv run --no-sync python -m scripts.publish_human_label_audit verify
           uv run --no-sync python -m scripts.check_reproducibility_package
