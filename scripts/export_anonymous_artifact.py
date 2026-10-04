@@ -61,6 +61,14 @@ PRIVATE_INSTITUTION_PATTERN = r"\bUniversity\s+of\s+Arkansas\s+at\s+Little\s+Roc
 PRIVATE_INSTITUTION_SHORT_PATTERN = r"\bUA" + r"LR\b"
 PRIVATE_WORKSPACE_PATTERN = r"\bD:[\\/]agent-mem\b"
 CITATION_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\((?:\.\.?/)?CITATION\.cff\)", re.IGNORECASE)
+ANONYMOUS_CLONE_BLOCK = re.compile(
+    r"(?m)^```sh\r?\ngit clone https://github\.com/anonymous/verify-agent-memory(?:\.git)?\r?\n"
+    r"cd verify-agent-memory\r?\n"
+)
+ANONYMOUS_DOWNLOAD_INSTRUCTIONS = (
+    "Download the **Full repo** ZIP from this artifact's hosting page and extract it.\n"
+    "Open a terminal in the extracted repository root, then run:\n\n```sh\n"
+)
 IDENTITY_REPLACEMENTS = (
     (
         "public repository name",
@@ -248,6 +256,12 @@ def export_anonymous_artifact(
             data, changed = ANONYMOUS_RELEASE_NOTE.encode("utf-8"), True
         else:
             data, changed = _redact(source.read_bytes())
+            if relative.as_posix() == "README.md":
+                text, replacements = ANONYMOUS_CLONE_BLOCK.subn(
+                    ANONYMOUS_DOWNLOAD_INSTRUCTIONS, data.decode("utf-8")
+                )
+                if replacements:
+                    data, changed = text.encode("utf-8"), True
         destination.write_bytes(data)
         shutil.copystat(source, destination)
         copied.append(relative.as_posix())

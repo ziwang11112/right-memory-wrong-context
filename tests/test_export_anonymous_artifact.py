@@ -117,6 +117,39 @@ def test_anonymous_export_rejects_secret_shaped_content(tmp_path: Path) -> None:
         )
 
 
+@pytest.mark.parametrize("repository_slug", ["verify-agent-memory", "right-memory-wrong-context"])
+def test_anonymous_readme_uses_downloaded_zip_without_changing_public_instructions(
+    tmp_path: Path, repository_slug: str
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    output = tmp_path / "artifact"
+    public_readme = (
+        "# Paper title\n\n## Quick Start\n\n"
+        f"```sh\ngit clone https://github.com/ziwang11112/{repository_slug}.git\n"
+        f"cd {repository_slug}\n"
+        "uv sync --locked --extra dev --extra plots\n"
+        "uv run --no-sync python -m scripts.run_retrieval_experiment --help\n```\n"
+    )
+    readme = repository / "README.md"
+    readme.write_text(public_readme, encoding="utf-8")
+
+    report = export_anonymous_artifact(
+        repository, output, tracked_paths=("README.md",), require_clean=False
+    )
+
+    exported = (output / "README.md").read_text(encoding="utf-8")
+    assert "**Full repo** ZIP from this artifact's hosting page" in exported
+    assert "Open a terminal in the extracted repository root" in exported
+    assert "git clone " not in exported
+    assert "\ncd " not in exported
+    assert exported.startswith("# Paper title\n\n## Quick Start\n\n")
+    assert "uv sync --locked --extra dev --extra plots\n" in exported
+    assert "python -m scripts.run_retrieval_experiment --help\n```\n" in exported
+    assert readme.read_text(encoding="utf-8") == public_readme
+    assert report["file_sha256"]["README.md"] == _sha256(output / "README.md")
+
+
 def test_anonymous_export_removes_public_citation_and_redacts_all_authors(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     repository.mkdir()
