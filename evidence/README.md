@@ -18,9 +18,9 @@ identifiers are retained solely to make the qualitative examples auditable.
 | `normalized/natural_evaluation.csv` | Source-macro evaluation over 87 groups, 182,908 memories, and 3,767 queries |
 | `normalized/counterfactual_exposure.csv` | Reader-separated paired prompt interventions over 16 controlled scenarios |
 | `normalized/claude_opus5_exposure_replication.csv` | Separately executed fourth-provider replication of the same paired prompt construction; never pooled with the original three-reader execution |
-| `normalized/fixed_budget_support.csv` | Frozen top-k support, recall, risk, and algorithmic-cost contrasts |
+| `normalized/fixed_budget_support.csv` | Frozen top-k support, recall, risk, policy-axis sensitivity, evaluator-label missingness, gold-preserving oracle, and algorithmic-cost contrasts |
 | `normalized/metadata_reliability.csv` | Corrected axis attribution and observed metadata-corruption brackets |
-| `normalized/text_inferred_admissibility.csv` | Released-field oracle versus text-inferred filtering on fixed natural-development cases |
+| `normalized/text_inferred_admissibility.csv` | Label-aligned released-field reference versus text-inferred filtering on fixed natural-development cases |
 | `normalized/controlled_selective_verification.csv` | Controlled focal flips, stable controls, and selective-verification error rates |
 | `normalized/natural_end_to_end.csv` | Reader-separated route-to-answer deltas on the frozen 1,523-case natural sample; GPT is sequential and all readers share one blinded judge |
 | `normalized/cross_judge_audit.csv` | Post-hoc, outcome-independent agreement audit on 200 exact-deduplicated natural outputs; one alternate judge and no full-population re-score |

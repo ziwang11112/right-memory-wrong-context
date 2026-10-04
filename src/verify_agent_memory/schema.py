@@ -55,7 +55,7 @@ class MemoryAssessment:
         for name, (value, enum_type) in enum_fields.items():
             if not isinstance(value, enum_type):
                 raise TypeError(f"{name} must be {enum_type.__name__}")
-        if self.policy_allowed not in {True, False, None}:
+        if self.policy_allowed is not None and not isinstance(self.policy_allowed, bool):
             raise TypeError("policy_allowed must be true, false, or unknown")
 
 

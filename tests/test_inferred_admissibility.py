@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from verify_agent_memory.inferred_admissibility import (
@@ -11,6 +13,7 @@ from verify_agent_memory.inferred_admissibility import (
     ProbabilityVector,
     aggregate_route_scores,
     binary_classification_metrics,
+    case_from_mapping,
     filter_decision_metrics,
     intent_classification_metrics,
     prediction_from_mapping,
@@ -59,6 +62,39 @@ def _case(*, role: str = "calibration", case_id: str = "case-1") -> InferenceCas
 
 def _vector(labels: tuple[str, ...], values: tuple[float, ...]) -> ProbabilityVector:
     return ProbabilityVector(labels=labels, values=values)
+
+
+@pytest.mark.parametrize("field", ["released_policy_allowed", "released_lifecycle_compatible"])
+def test_inference_candidate_rejects_numeric_labels(field: str) -> None:
+    with pytest.raises(TypeError, match="released candidate labels"):
+        replace(_case().candidates[0], **{field: 0})
+
+    row = {
+        "case_id": "case-1",
+        "source": "memops",
+        "group_id": "group-1",
+        "role": "analysis",
+        "query": {
+            "text": "Where is the parcel?",
+            "visible_time": None,
+            "released_query_intent": "current_state",
+            "anchor_total": 1,
+        },
+        "candidates": [
+            {
+                "candidate_key": "c01",
+                "rank": 1,
+                "text": "It is in Paris.",
+                "visible_order": None,
+                "required_evidence": True,
+                "released_policy_allowed": True,
+                "released_lifecycle_compatible": True,
+                field: 1,
+            }
+        ],
+    }
+    with pytest.raises(TypeError, match=field):
+        case_from_mapping(row)
 
 
 def _prediction(case: InferenceCase) -> CasePrediction:

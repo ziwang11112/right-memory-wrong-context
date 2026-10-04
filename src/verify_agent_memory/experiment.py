@@ -144,6 +144,30 @@ def run_case(
     )
 
 
+def validate_experiment(
+    cases: Sequence[ExperimentCase],
+    configs: Sequence[RetrievalConfig],
+    *,
+    target_recall: float = 0.8,
+) -> None:
+    """Check experiment-wide inputs without running retrieval or scoring."""
+    if not cases or not configs:
+        raise ValueError("cases and configs must be nonempty")
+    if isinstance(target_recall, bool) or not isinstance(target_recall, (int, float)):
+        raise TypeError("target_recall must be numeric")
+    if not math.isfinite(float(target_recall)) or not 0 <= target_recall <= 1:
+        raise ValueError("target_recall must be finite and in [0, 1]")
+    case_ids = [(case.source, case.query.query_id) for case in cases]
+    if len(set(case_ids)) != len(case_ids):
+        raise ValueError("source/query identities must be unique")
+    setting_ids = [config.setting_id for config in configs]
+    if len(set(setting_ids)) != len(setting_ids):
+        raise ValueError("setting IDs must be unique")
+    for case in cases:
+        if any(len(memory.embedding) != len(case.query.embedding) for memory in case.memories):
+            raise ValueError("all memory and query embeddings must share one dimension")
+
+
 def run_experiment(
     cases: Sequence[ExperimentCase],
     configs: Sequence[RetrievalConfig],
@@ -151,14 +175,7 @@ def run_experiment(
     target_recall: float = 0.8,
 ) -> tuple[QueryRun, ...]:
     """Run the complete Cartesian product of cases and frozen settings."""
-    if not cases or not configs:
-        raise ValueError("cases and configs must be nonempty")
-    case_ids = [(case.source, case.query.query_id) for case in cases]
-    if len(set(case_ids)) != len(case_ids):
-        raise ValueError("source/query identities must be unique")
-    setting_ids = [config.setting_id for config in configs]
-    if len(set(setting_ids)) != len(setting_ids):
-        raise ValueError("setting IDs must be unique")
+    validate_experiment(cases, configs, target_recall=target_recall)
     return tuple(
         run_case(case, config, target_recall=target_recall) for config in configs for case in cases
     )

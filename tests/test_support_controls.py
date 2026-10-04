@@ -28,6 +28,23 @@ def test_filter_ranking_preserves_order_and_depth() -> None:
     assert filter_ranking(ranked[:3], {"m2", "m4", "m5"}, limit=5) == ("m2",)
 
 
+def test_zero_depth_filter_exposes_no_memory() -> None:
+    assert filter_ranking(("m1", "m2"), {"m1", "m2"}, limit=0) == ()
+
+
+@pytest.mark.parametrize("numeric_label", [0, 1, 0.0, 1.0])
+def test_matched_recall_rejects_numeric_statuses(numeric_label: object) -> None:
+    with pytest.raises(ValueError, match="true, false, or unresolved"):
+        score_matched_recall(
+            ("m1",),
+            {"m1"},
+            {"m1": numeric_label},  # type: ignore[dict-item]
+            {"m1": True},
+            target_recall=0.8,
+            infeasibility_cost=1.0,
+        )
+
+
 def test_matched_recall_scores_full_and_scope_excluded_risk() -> None:
     ranked = ("wrong-scope", "stale", "anchor", "extra")
     full = {

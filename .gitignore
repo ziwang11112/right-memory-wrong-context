@@ -5,6 +5,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .pytest-tmp/
+.pytest-anonymous-export/
 .ruff_cache/
 .evidence-test-*/
 .coverage

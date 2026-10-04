@@ -13,6 +13,7 @@ provider-backed paths fail closed unless their exact execution contract is satis
 | Metadata corruption | `metadata_robustness_protocol.json`, `metadata_robustness_retrieval_protocol.json` | `scripts.run_metadata_robustness` |
 | Fixed-budget Pareto | `top_k_pareto_protocol.json` | `scripts.run_top_k_pareto` |
 | Released-field attribution | `admissibility_attribution_protocol.json` | `scripts.publish_supplemental_results` |
+| Policy-axis sensitivity | `policy_axis_sensitivity_protocol.json` | `scripts/run_policy_axis_sensitivity.py` |
 
 ## Verification and Exposure
 

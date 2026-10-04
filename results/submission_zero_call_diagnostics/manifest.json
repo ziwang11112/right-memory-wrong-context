@@ -1,0 +1,49 @@
+{
+  "analysis": "submission-zero-call-diagnostics-v1",
+  "analysis_commit": "616d84ec3a49eade0c6cef946f741ce0ea92565e",
+  "base_execution_commit": "8e34e3d41c56e1699696bc27be95cdac7c9528e5",
+  "contains_query_memory_or_group_ids": false,
+  "contains_raw_text_embeddings_prompts_or_responses": false,
+  "embedding_checkpoint_sha256": "d333477116735f49b7628ee5d324e92a9f608190079a7b1d699308f5ec4f1ae6",
+  "evaluation_retuning": false,
+  "global_ranking_checks": 3767,
+  "gold_preserving_control_is_non_deployable": true,
+  "group_count": 87,
+  "judge_calls": 0,
+  "missingness_changes_evaluator_labels_only": true,
+  "namespace_ranking_checks": 3767,
+  "paid_calls": 0,
+  "protocol_sha256": "874088c05c28958b0cd20756b333a7b11af73504107c2fca07d1100ea295402d",
+  "provider_calls": 0,
+  "published_files": {
+    "README.md": {
+      "sha256": "98668f19f88ef5cfafdaec10e28421034a38ce10acb18328c1e537eb1e9f1116"
+    },
+    "gold_preserving_seed_rows.csv": {
+      "row_count": 10,
+      "sha256": "acb9a1876bd4e6df00f93f2e0f146fe347109e2eceb7786a6f550a6d5185981e"
+    },
+    "gold_preserving_summary.csv": {
+      "row_count": 4,
+      "sha256": "06b5f6c31cfab572da78972cfa42a0fa6357a46b3fa6527180ae0b581a68fddc"
+    },
+    "label_missingness_seed_rows.csv": {
+      "row_count": 140,
+      "sha256": "2d9b1facd5962542b78da450e8da6dd15363bd1999c39e9f02723e2b39ee3490"
+    },
+    "label_missingness_summary.csv": {
+      "row_count": 14,
+      "sha256": "cd129cd29d4432fcebe3f392da066eacc8a1defcfeba931062329628d6f92019"
+    }
+  },
+  "query_count": 3767,
+  "reader_calls": 0,
+  "route_bundle_sha256": {
+    "001-rhelm-25ea22a7b2be.jsonl.gz": "c6116bf1c236e1a3aa32306e82e724294905066d4fd634f843c17d1a73c4c891",
+    "004-rhelm-ed4a7e3ae49d.jsonl.gz": "b82876e3c9d8ace3a45a1bc3dcaac875513628d03faafdf700ba87d9c587792e",
+    "010-memops-25ea22a7b2be.jsonl.gz": "09aba7af617129bc3cf4d4171771899b7899fca63af14ccdb76e8aa97ed8763f",
+    "013-memops-ed4a7e3ae49d.jsonl.gz": "dad0d3b933caf9c2a35188c473766b939e014db546e2b173e101a248977038dc"
+  },
+  "schema_version": 1,
+  "support_control_main_sha256": "4fe6124815a99bbf13f4fea0d30f5a61517a41050fea15152775a99a41ebfe50"
+}

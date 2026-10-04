@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -108,6 +109,17 @@ def test_utf8_truncation_is_byte_bounded_and_character_safe() -> None:
     value = "ab\N{GRINNING FACE}cd"
     assert truncate_utf8(value, 6) == "ab\N{GRINNING FACE}"
     assert len(truncate_utf8(value, 5).encode("utf-8")) <= 5
+
+
+@pytest.mark.parametrize("field", ["scope_allowed", "policy_allowed", "lifecycle_compatible"])
+def test_natural_candidate_rejects_numeric_labels(field: str) -> None:
+    candidate = _case().namespace_candidates[0]
+    with pytest.raises(TypeError, match=field):
+        replace(candidate, **{field: 0})
+    row = candidate.as_dict()
+    row[field] = 1
+    with pytest.raises(TypeError, match=field):
+        NaturalCandidate.from_mapping(row, location="candidate")
 
 
 def test_five_routes_are_delete_only_and_retain_unknowns() -> None:

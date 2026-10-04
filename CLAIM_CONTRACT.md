@@ -286,6 +286,7 @@ Frozen zero-call controls separate support identity from pool size and filter or
 | --- | ---: | ---: | ---: |
 | Global dense | 90121.7 | 0.431570 | 0.237404 |
 | Size-matched random partition (10 seeds) | 1540.1 | 0.060954 | 0.024233 |
+| Gold-preserving same-size oracle (10 seeds) | 1551.2 | 0.839636 | 0.746616 |
 | Trusted namespace pre-filter | 1551.2 | 0.532878 | 0.311314 |
 
 Global top-20 followed by namespace deletion retains `0.431570` recall; global
@@ -297,21 +298,44 @@ at unit cost it is `-0.066178`. Leave-one-group-out recall deltas remain in
 `[0.097427, 0.107711]`; the exact seven-group RHELM sign-flip `p`-value is
 `0.015625`.
 
+The policy-axis sensitivity reuses the same frozen top-20 routes and source-required
+anchors while omitting only the released policy-disallowed predicate. Penalized upper
+risk changes from `0.786818` for global dense to `0.693498` for namespace dense, a
+paired delta of `-0.093320` (95% CI `[-0.114739, -0.071374]`). The any-known-violation
+and known-violation-count deltas are `-0.222094` and `-0.899191`, respectively, with
+intervals excluding zero.
+
+The gold-preserving arm is a non-deployable attribution control: it retains every
+released required anchor and samples non-anchors to exactly the namespace support
+size. Its `0.839636` recall and `0.746616` feasibility expose substantial headroom
+when gold anchors are known; they do not make the control a routing method. In a
+separate evaluator-label missingness sensitivity, routes and recall remain fixed.
+At 20% hiding, global/namespace coverage falls from about `0.992` to
+`0.785896`/`0.792754`, while bound width grows from about `0.008` to
+`0.214104`/`0.207246`.
+
 **Allowed:** On frozen rankings, trusted namespace support improved recall,
 feasibility, and post-hoc v2 penalized admissibility upper risk at all four reported
-depths. Both risk components contributed. In this exact-dense control, correct
-provenance rather than candidate count alone explains the support gain; shallow late
-filtering does not recover the pre-filtered result.
+depths. Both risk components contributed. An arbitrary size-matched partition does
+not explain the support gain, while the gold-preserving oracle shows that retaining
+released anchors plus matched support size has much higher headroom than namespace
+alone. Shallow late filtering does not recover the pre-filtered result. Omitting the
+released policy predicate preserves the direction of the namespace-support result.
 
 **Forbidden:** Do not say v2 risk selected the original settings, call this a new
 held-out run, claim namespace support guarantees admissibility, generalize the random
 control to every candidate-pool effect, or claim conditional policy/lifecycle risk
-improved.
+improved. Do not call namespace identity necessary or sufficient for optimal
+retrieval, call the gold-preserving oracle deployable, or say evaluator-label
+missingness changes retrieval performance.
 
 **Boundary:** This is a no-retuning post-hoc rescore of released trusted namespaces.
 Original selection used the v1 penalized non-usable upper risk. The random partition
 is not a semantic-cluster control, and the residual-risk advantage depends on a
-positive penalty for infeasibility.
+positive penalty for infeasibility. The policy sensitivity does not validate policy
+labels or imply that policy verification is unnecessary. The gold-preserving arm
+uses released required anchors. The missingness sensitivity hides evaluator labels
+after retrieval and is not a deployment-time metadata corruption model.
 
 ### C10: Metadata-error asymmetry
 
@@ -323,7 +347,7 @@ Corrected v2 attribution against namespace dense is:
 | --- | ---: | ---: | ---: |
 | Policy only | 0.026547 | 0.057645 | -0.146723 |
 | Lifecycle only | -0.015783 | -0.037916 | 0.017592 |
-| Policy + lifecycle (`released_governance_oracle_v2`) | 0.010489 | 0.016954 | -0.123554 |
+| Policy + lifecycle (`released_governance_oracle_v2`, label-aligned reference) | 0.010489 | 0.016954 | -0.123554 |
 
 The observed ten-seed weak-dominance brackets are mechanism-specific. Namespace
 channels use global dense as reference; policy, lifecycle, and intent channels use

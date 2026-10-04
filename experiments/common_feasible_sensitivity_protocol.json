@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "protocol_id": "natural-common-feasible-sensitivity-v1",
+  "status": "frozen_posthoc_zero_call_sensitivity",
+  "base_execution_commit": "8e34e3d41c56e1699696bc27be95cdac7c9528e5",
+  "route_limit": 20,
+  "target_recall": 0.8,
+  "bootstrap_samples": 10000,
+  "bootstrap_seed": 20260814,
+  "arms": [
+    "global_dense",
+    "namespace_dense"
+  ],
+  "axis_families": [
+    "full_scope_policy_lifecycle",
+    "scope_lifecycle_no_policy"
+  ],
+  "selection_rule": "retain a query only when both arms reach target recall",
+  "invariants": {
+    "same_frozen_route_bundles": true,
+    "same_route_limit": true,
+    "same_recall_anchors": true,
+    "same_target_recall": true,
+    "same_query_intersection_for_both_arms": true,
+    "dev_tuning": false,
+    "evaluation_retuning": false,
+    "provider_calls": 0,
+    "reader_calls": 0,
+    "judge_calls": 0,
+    "paid_calls": 0
+  }
+}

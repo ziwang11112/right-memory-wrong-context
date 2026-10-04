@@ -1,163 +1,127 @@
-# The Wrong Memory at the Right Time
+# The Right Memory in the Wrong Context: Verifying Retrieval Admissibility in Long-Term Agent Memory
 
-**Reproducible evaluation artifact for _Verifying Retrieval Admissibility in
-Long-Term Agents_.**
+Code and released evidence accompanying the paper by **Zi Wang, Xingqiao Wang,
+Emmanuel Addai, Devika Ambekar, and Xiaowei Xu**.
 
-Long-term-memory agents can retrieve a record that is topically relevant but still
-ineligible for the current principal, policy, intent, lifecycle state, or time. This
-repository provides the evaluation code, frozen protocols, derived evidence, and
-integrity checks used to trace that failure across four observable stages:
+University of Arkansas at Little Rock.
+
+[Experiment guide](docs/PAPER_ALIGNMENT.md) ·
+[Reproducibility](REPRODUCIBILITY.md) ·
+[Results](results/README.md) ·
+[Citation](CITATION.cff)
+
+## Overview
+
+A memory can be relevant to a query yet inadmissible for the current principal,
+policy, intent, or lifecycle state. This repository implements the paper's
+evaluation framework and core experiments, tracing memory use through four stages:
 
 ```text
 Stored -> Retrieved -> Exposed -> Disclosed
 ```
 
-The package name remains `verify-agent-memory` for stable imports and commands. This
-is an evaluation and verification artifact, not a new memory index, a production
-policy engine, or an official benchmark leaderboard.
+| Stage | What the code measures |
+| --- | --- |
+| Candidate support | Evidence recall, target-recall feasibility, and candidate work |
+| Eligibility | Three-valued admissibility decisions, violations, coverage, and risk bounds |
+| Exposure | Which memory records enter the reader's prompt |
+| Disclosure | Reader-specific answer and literal-disclosure effects |
 
-## What Is Verified
-
-| Stage | Verification question | Main outputs |
-| --- | --- | --- |
-| Candidate support | Was the right evidence reachable under the allowed namespace? | Evidence recall, target-recall feasibility, candidate work |
-| Eligibility | Was each retrieved record allowed for this query and time? | Three-valued decisions, typed violations, coverage, risk bounds |
-| Exposure | Which record IDs crossed the prompt boundary? | Identity-preserving prompt traces |
-| Disclosure | Did exposed content appear in the answer? | Reader-specific answer and literal-disclosure effects |
-
-For memory `m` and query context `z = (q, principal, policy, intent, time)`:
+The implementation uses the paper's definitions:
 
 ```text
 admissible_z(m) = scope_z(m) AND policy_z(m) AND lifecycle_z(m)
 usable_z(m)     = relevant_z(m) AND admissible_z(m)
 ```
 
-Every component is three-valued: positive, negative, or unresolved. Known violations
-are excluded, while missing evidence remains unresolved and is reflected in coverage
-and lower/upper risk bounds. Routes are compared at matched evidence recall so that
-returning less useful context cannot appear artificially safe.
+Decisions may be positive, negative, or unresolved. Comparisons at matched evidence
+recall separate admissibility from the loss of useful context. See the
+[method guide](docs/EXPERIMENT_METHODS.md) for the evaluation details.
 
-See [`docs/EXPERIMENT_METHODS.md`](docs/EXPERIMENT_METHODS.md) for the executable
-method contract and [`CLAIM_CONTRACT.md`](CLAIM_CONTRACT.md) for reporting limits.
+## Main Results
 
-## Results at a Glance
+On frozen top-20 rankings covering 3,767 RHELM/MemOps queries, trusted namespace
+support improves required-evidence recall from **0.432 to 0.533**, increases the
+fraction reaching the 0.8 recall target from **0.237 to 0.311**, and reduces exact
+similarity evaluations by **98.3%**.
 
-The checked-in natural evaluation contains 87 namespace groups, 182,908 memories,
-and 3,767 RHELM/MemOps queries. On frozen top-20 rankings, trusted namespace support:
+On the separate 1,523-case route-to-reader subset, answer-accuracy differences are
+positive across separately reported readers (**+0.053 to +0.068**). These route
+contrasts are observational. Controlled exposure experiments report reader-specific
+effects and do not establish a general disclosure-reduction claim.
 
-- raises evidence recall from `0.432` to `0.533`;
-- raises the fraction reaching the `0.8` recall target from `0.237` to `0.311`;
-- reduces exact candidate scoring from 90,122 to 1,551 candidates (`58.1x` fewer);
-- reduces feasible prefixes containing any known admissibility violation from
-  `0.528` to `0.396`; and
-- reduces the mean known-violation count from `2.080` to `1.393`, without reaching
-  zero.
-
-Correct provenance identity is necessary for this result: a size-matched random
-partition performs poorly, and global retrieval requires depth 500 before late
-namespace filtering approaches namespace pre-filter recall. The namespace result is
-therefore a benchmark-conditional candidate-support intervention, not a safety
-certificate or a demonstrated policy/lifecycle solution.
-
-On a frozen 1,523-case route-to-reader subset, namespace-minus-global answer-accuracy
-effects are positive for separately reported DeepSeek, Gemini, and sequential GPT
-readers (`+0.053` to `+0.068`). These route contrasts are observational and use one
-shared blinded primary judge.
-
-The remaining diagnostics establish important boundaries:
-
-- on 72 public-development cases, a released-field oracle lowers
-  recall-constrained upper loss by `0.032`, while the two tested text-only gates do
-  not realize that headroom;
-- all four controlled readers show positive selectivity between relevant-admissible
-  and relevant-inadmissible evidence, but DeepSeek retains a `+0.156`
-  relevant-inadmissible disclosure effect; and
-- protected- and stale-disclosure changes are inconclusive, so the artifact makes no
-  general disclosure-reduction claim.
-
-The top-100 v1 route-family evaluation is confirmatory for its historical
-non-usable metric. The top-20 admissibility result above is a post-hoc v2 rescore of
-the same frozen rankings: it changes no route, ranking, setting, or hyperparameter.
-Exact estimates, intervals, and provenance are indexed in
-[`results/README.md`](results/README.md), [`evidence/README.md`](evidence/README.md),
-and [`claims/claims.yaml`](claims/claims.yaml).
+The top-20 analysis is a post-hoc rescore of frozen rankings, distinct from the
+top-100 evaluation. Detailed estimates, confidence intervals, sensitivity analyses,
+and interpretation boundaries are in [results](results/README.md) and the
+[claim contract](CLAIM_CONTRACT.md).
 
 ## Quick Start
 
-Requirements: Python 3.11+, Git, and [`uv`](https://docs.astral.sh/uv/). The default
-path requires no API key, provider call, GPU, or private data.
+Requirements: **Python 3.11+**, Git, and [uv](https://docs.astral.sh/uv/).
+The example runs locally without a GPU, API key, or private data.
 
-```powershell
-uv sync --extra dev --extra plots
+```sh
+git clone https://github.com/ziwang11112/right-memory-wrong-context.git
+cd right-memory-wrong-context
+uv sync --locked --extra dev --extra plots
 
-uv run --extra dev python -m scripts.run_retrieval_experiment validate `
-  --cases tests/fixtures/retrieval_cases.jsonl `
-  --protocol experiments/frozen_natural_protocol.json
-
-uv run --extra dev python -m scripts.run_retrieval_experiment run `
-  --cases tests/fixtures/retrieval_cases.jsonl `
-  --protocol experiments/frozen_natural_protocol.json `
-  --output tmp/retrieval_routes.jsonl
+uv run --no-sync python -m scripts.run_retrieval_experiment validate --cases tests/fixtures/retrieval_cases.jsonl --protocol experiments/frozen_natural_protocol.json
+uv run --no-sync python -m scripts.run_retrieval_experiment run --cases tests/fixtures/retrieval_cases.jsonl --protocol experiments/frozen_natural_protocol.json --output tmp/retrieval_routes.jsonl
 ```
 
-These synthetic fixtures exercise the same normalized interfaces and invariants as
-the natural evaluation. They are implementation checks, not benchmark estimates.
+The example writes route-level results to `tmp/retrieval_routes.jsonl`. It uses
+synthetic fixtures to demonstrate the interfaces; benchmark reproduction paths are
+documented in [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
 
-## Verify the Released Artifact
+## Verify the Release
 
-Run the complete offline verification path:
+After installing the locked environment above:
 
-```powershell
-uv run --extra dev --extra plots python -m pytest
-uv run --extra dev python -m ruff check .
-uv run --extra dev python -m ruff format --check .
-uv run --extra dev python scripts/check_claim_contract.py
-uv run --extra dev python scripts/verify_evidence.py
-uv run --extra dev python -m scripts.check_reproducibility_package
+```sh
+uv run --no-sync python -m pytest
+uv run --no-sync python -m ruff check .
+uv run --no-sync python -m ruff format --check .
+uv run --no-sync python -m scripts.check_claim_contract
+uv run --no-sync python -m scripts.verify_evidence
+uv run --no-sync python -m scripts.check_reproducibility_package
 ```
 
-Verify each derived result family and regenerate released plots with the commands in
-[`REPRODUCIBILITY.md`](REPRODUCIBILITY.md). The checks reject schema drift,
-non-finite values, changed hashes, incomplete result families, release-excluded
-paths, and common secret patterns.
+CI runs these checks and validates an independently installed anonymous export.
 
-## Data and Reproducibility Boundary
+## Release Scope
 
-| Material | Availability |
-| --- | --- |
-| Evaluation library, protocols, prompts, and synthetic fixtures | Included |
-| Content-free aggregate, pair-level, and tokenized derived scores | Included and hash-bound |
-| GateMem, RHELM, and MemOps source repositories | Fetchable at pinned commits and tree hashes |
-| Raw benchmark text, provider requests/responses, embeddings, and credentials | Excluded |
+The release includes the evaluation library, experiment protocols, constructed
+inputs, derived results, and verification tools. Public pair-level and tokenized
+case scores support recalculation of the corresponding aggregates and intervals.
+Historical embeddings, complete natural-corpus rankings, and raw provider responses
+are not distributed. Recreating those executions requires additional inputs and,
+where applicable, model access.
 
-Fetch and verify redistributable public sources from their owners:
+See the [experiment guide](docs/PAPER_ALIGNMENT.md) for code-to-paper mappings and
+the [reproducibility guide](REPRODUCIBILITY.md) for runnable commands. The repository
+covers the released experiments; it does not claim to reproduce every manuscript
+detail.
 
-```powershell
-uv run --extra dev python -m scripts.fetch_public_sources validate
-uv run --extra dev python -m scripts.fetch_public_sources fetch
-uv run --extra dev python -m scripts.fetch_public_sources verify
-```
-
-The public derivative records reconstruct the released aggregates, source-specific
-contrasts, bootstrap intervals, and figures without a provider call. They cannot
-independently audit the original private payload-to-provider-to-score
-transformation. See [`data/README.md`](data/README.md),
-[`PROVENANCE.md`](PROVENANCE.md), and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
-
-## Repository Map
+## Repository Structure
 
 ```text
-src/           pure evaluation library
-scripts/       experiment runners, publishers, and integrity checks
+src/           evaluation library
+scripts/       experiment runners and verification tools
 experiments/   frozen protocols, prompts, and constructed inputs
-data/          public-source registry and redistribution policy
-results/       content-free derived result packages
+data/          public-source registry and redistribution guidance
+results/       derived experiment results
 evidence/      normalized measurements and provenance manifests
-claims/        machine-readable interpretation boundaries
-tests/         unit, invariant, provenance, and reproducibility tests
-docs/          method and execution contracts
+claims/        machine-readable claim boundaries
+tests/         unit and reproducibility tests
+docs/          method and execution guides
 ```
 
-Original code and documentation are MIT licensed. Third-party datasets and source
-repositories retain their own terms. Citation metadata will be added after the
-double-blind review period; during review, refer to the accompanying paper by title.
+## Citation and License
+
+Use [CITATION.cff](CITATION.cff) for the author list and repository citation.
+A paper identifier will be added when available. The Python package name remains
+`verify-agent-memory`.
+
+Original code and documentation are released under the [MIT License](LICENSE).
+Third-party materials retain their own terms; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

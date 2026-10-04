@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "protocol_id": "submission-zero-call-diagnostics-v1",
+  "status": "frozen_posthoc_zero_call_diagnostic",
+  "base_execution_commit": "8e34e3d41c56e1699696bc27be95cdac7c9528e5",
+  "base_embedding_checkpoint_sha256": "d333477116735f49b7628ee5d324e92a9f608190079a7b1d699308f5ec4f1ae6",
+  "route_limit": 20,
+  "target_recall": 0.8,
+  "infeasibility_cost": 1.0,
+  "seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  "evaluator_label_missingness_rates": [0.0, 0.1, 0.2, 0.3, 0.5, 0.75, 0.9],
+  "missingness_arms": ["global_dense", "namespace_dense"],
+  "support_control_arms": [
+    "global_dense",
+    "size_matched_random_partition",
+    "gold_preserving_same_size",
+    "namespace_pre_filter"
+  ],
+  "gold_preserving_rule": "retain every released required anchor and uniformly sample non-anchors without replacement to the exact namespace candidate count",
+  "invariants": {
+    "same_frozen_embeddings": true,
+    "same_exact_dense_ranker": true,
+    "same_frozen_routes_for_missingness": true,
+    "same_route_limit": true,
+    "gold_assessments_immutable": true,
+    "missingness_changes_evaluator_labels_only": true,
+    "gold_preserving_control_is_non_deployable": true,
+    "dev_tuning": false,
+    "evaluation_retuning": false,
+    "provider_calls": 0,
+    "reader_calls": 0,
+    "judge_calls": 0,
+    "paid_calls": 0
+  }
+}

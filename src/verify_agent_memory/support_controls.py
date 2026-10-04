@@ -58,6 +58,8 @@ def filter_ranking(
     """Preserve ranking order while applying a fixed support mask."""
     if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
         raise ValueError("limit must be a nonnegative integer")
+    if limit == 0:
+        return ()
     selected: list[str] = []
     for memory_id in ranked_memory_ids:
         if memory_id in allowed_memory_ids:
@@ -75,7 +77,7 @@ def _validate_statuses(
     missing = set(ranked_memory_ids) - statuses.keys()
     if missing:
         raise ValueError(f"{label} lacks statuses for ranked memories")
-    if any(value not in {True, False, None} for value in statuses.values()):
+    if any(value is not None and not isinstance(value, bool) for value in statuses.values()):
         raise ValueError(f"{label} values must be true, false, or unresolved")
 
 

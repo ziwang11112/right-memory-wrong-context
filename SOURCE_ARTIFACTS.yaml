@@ -912,3 +912,80 @@ artifacts:
     transformation_required: "Preserve zero-call status, no-pooling boundaries, source hashes, and output hashes."
     public_label: "post-hoc robustness provenance"
     contains_raw_text_or_private_content: false
+
+  - id: policy_axis_sensitivity_summary
+    category: GENERATED_FROM_PUBLIC_DIAGNOSTIC
+    old_repository: "ziwang11112/verify-agent-memory"
+    frozen_commit: "5ffcf28f912c89d1c81b835a752943305a6f2e0c"
+    source_path: "results/policy_axis_sensitivity/summary.csv"
+    source_sha256: "1104d93d6ed2669f59f02fdde95e4aa292bdae055f25b303bf75f5e15de3b420"
+    intended_normalized_destination: "results/policy_axis_sensitivity/summary.csv"
+    transformation_required: "Preserve the frozen-route full-axis and policy-omitted macro estimates without retuning."
+    public_label: "policy-axis sensitivity summary"
+    contains_raw_text_or_private_content: false
+
+  - id: policy_axis_sensitivity_sources
+    category: GENERATED_FROM_PUBLIC_DIAGNOSTIC
+    old_repository: "ziwang11112/verify-agent-memory"
+    frozen_commit: "5ffcf28f912c89d1c81b835a752943305a6f2e0c"
+    source_path: "results/policy_axis_sensitivity/source_metrics.csv"
+    source_sha256: "e4ea1e169b921099bb1c4824400dbb3e218e2690539edbfb47eaae1a87980c7f"
+    intended_normalized_destination: "results/policy_axis_sensitivity/source_metrics.csv"
+    transformation_required: "Preserve source-specific policy-axis sensitivity metrics without identifiers."
+    public_label: "policy-axis source metrics"
+    contains_raw_text_or_private_content: false
+
+  - id: policy_axis_sensitivity_deltas
+    category: GENERATED_FROM_PUBLIC_DIAGNOSTIC
+    old_repository: "ziwang11112/verify-agent-memory"
+    frozen_commit: "5ffcf28f912c89d1c81b835a752943305a6f2e0c"
+    source_path: "results/policy_axis_sensitivity/paired_deltas.csv"
+    source_sha256: "9d852baca05ee74137b38dca031fdf031fdc200a2e806317846245643a6808c7"
+    intended_normalized_destination: "results/policy_axis_sensitivity/paired_deltas.csv"
+    transformation_required: "Preserve paired namespace-group bootstrap intervals for both axis families."
+    public_label: "policy-axis paired deltas"
+    contains_raw_text_or_private_content: false
+
+  - id: policy_axis_sensitivity_manifest
+    category: GENERATED_FROM_PUBLIC_DIAGNOSTIC
+    old_repository: "ziwang11112/verify-agent-memory"
+    frozen_commit: "5ffcf28f912c89d1c81b835a752943305a6f2e0c"
+    source_path: "results/policy_axis_sensitivity/manifest.json"
+    source_sha256: "c6f09a53271305e8f4f53d8da6fa1f389bae8b795aa6816bc7b2bbf6c38f78bd"
+    intended_normalized_destination: "results/policy_axis_sensitivity/manifest.json"
+    transformation_required: "Preserve route hashes, analysis commit, zero-call status, and output hashes."
+    public_label: "policy-axis sensitivity provenance"
+    contains_raw_text_or_private_content: false
+
+  - id: submission_label_missingness_summary
+    category: GENERATED_FROM_PUBLIC_DIAGNOSTIC
+    old_repository: "ziwang11112/verify-agent-memory"
+    frozen_commit: "616d84ec3a49eade0c6cef946f741ce0ea92565e"
+    source_path: "results/submission_zero_call_diagnostics/label_missingness_summary.csv"
+    source_sha256: "cd129cd29d4432fcebe3f392da066eacc8a1defcfeba931062329628d6f92019"
+    intended_normalized_destination: "evidence/normalized/fixed_budget_support.csv"
+    transformation_required: "Preserve frozen routes while reporting evaluator-label coverage and partial-identification bounds across the fixed missingness grid."
+    public_label: "evaluator-label missingness sensitivity"
+    contains_raw_text_or_private_content: false
+
+  - id: submission_gold_preserving_summary
+    category: GENERATED_FROM_PUBLIC_DIAGNOSTIC
+    old_repository: "ziwang11112/verify-agent-memory"
+    frozen_commit: "616d84ec3a49eade0c6cef946f741ce0ea92565e"
+    source_path: "results/submission_zero_call_diagnostics/gold_preserving_summary.csv"
+    source_sha256: "06b5f6c31cfab572da78972cfa42a0fa6357a46b3fa6527180ae0b581a68fddc"
+    intended_normalized_destination: "evidence/normalized/fixed_budget_support.csv"
+    transformation_required: "Preserve the ten-seed mean of the non-deployable released-gold same-size support oracle."
+    public_label: "gold-preserving same-size support oracle"
+    contains_raw_text_or_private_content: false
+
+  - id: submission_zero_call_diagnostics_manifest
+    category: GENERATED_FROM_PUBLIC_DIAGNOSTIC
+    old_repository: "ziwang11112/verify-agent-memory"
+    frozen_commit: "616d84ec3a49eade0c6cef946f741ce0ea92565e"
+    source_path: "results/submission_zero_call_diagnostics/manifest.json"
+    source_sha256: "84b50616da3ea20e12226a91cc460142303efe5bcb76d1a4651c524f8e06700f"
+    intended_normalized_destination: "evidence/normalized/fixed_budget_support.csv"
+    transformation_required: "Preserve exact route hashes, implementation commit, parity counts, and zero-call boundaries."
+    public_label: "submission diagnostic provenance"
+    contains_raw_text_or_private_content: false

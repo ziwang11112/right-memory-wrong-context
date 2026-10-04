@@ -20,6 +20,7 @@ REQUIRED_PATHS = {
     "REPRODUCIBILITY.md",
     "LICENSE",
     "pyproject.toml",
+    "uv.lock",
     "data/README.md",
     "data/upstream_sources.json",
     "experiments/README.md",
@@ -133,6 +134,7 @@ def validate_package(root: Path = ROOT) -> tuple[list[str], dict[str, int]]:
             errors.append(f"credential file is tracked: {value}")
         path = root / relative
         if not path.is_file():
+            errors.append(f"tracked file is missing: {value}")
             continue
         data = path.read_bytes()
         for label, pattern in SECRET_PATTERNS.items():
@@ -145,7 +147,12 @@ def validate_package(root: Path = ROOT) -> tuple[list[str], dict[str, int]]:
     for value in result_files:
         if Path(value).suffix.lower() not in RESULT_SUFFIXES:
             errors.append(f"unsupported result-file type: {value}")
-    result_families = sorted(path.name for path in (root / "results").iterdir() if path.is_dir())
+    result_root = root / "results"
+    result_families = (
+        sorted(path.name for path in result_root.iterdir() if path.is_dir())
+        if result_root.is_dir()
+        else []
+    )
     for family in result_families:
         manifest = f"results/{family}/manifest.json"
         if manifest not in tracked_set:

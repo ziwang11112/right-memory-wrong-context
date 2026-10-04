@@ -77,6 +77,12 @@ def test_unknown_is_not_imputed_as_allowed_or_disallowed() -> None:
     assert usable_status(item) is None
 
 
+@pytest.mark.parametrize("numeric_label", [0, 1, 0.0, 1.0])
+def test_policy_label_rejects_numbers_that_compare_equal_to_booleans(numeric_label: object) -> None:
+    with pytest.raises(TypeError, match="policy_allowed"):
+        assessment(policy_allowed=numeric_label)  # type: ignore[arg-type]
+
+
 def test_schema_rejects_empty_ids_and_untyped_enums() -> None:
     with pytest.raises(ValueError, match="nonempty"):
         MemoryAssessment(

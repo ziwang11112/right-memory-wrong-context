@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from verify_agent_memory.retrieval import (
     MemoryRecord,
     PolicyDecision,
@@ -50,6 +52,14 @@ def query(
 
 def config(arm: RetrievalArm, **kwargs: object) -> RetrievalConfig:
     return RetrievalConfig(setting_id=f"setting-{arm.value}", arm=arm, **kwargs)
+
+
+@pytest.mark.parametrize("numeric_label", [0, 1, 0.0, 1.0])
+@pytest.mark.parametrize("field", ["content_disclosure_allowed", "operation_trace_allowed"])
+def test_policy_decisions_reject_numeric_labels(field: str, numeric_label: object) -> None:
+    # Numeric zero must not pass validation then bypass the identity-based deny gate.
+    with pytest.raises(TypeError, match=field):
+        PolicyDecision("memory", **{field: numeric_label})  # type: ignore[arg-type]
 
 
 def test_namespace_support_excludes_more_similar_wrong_namespace() -> None:

@@ -1,0 +1,53 @@
+{
+  "analysis": "natural-policy-axis-sensitivity-v1",
+  "analysis_commit": "abdfb588e216644262d7f57d5fce5413f51ce3f5",
+  "base_execution_commit": "8e34e3d41c56e1699696bc27be95cdac7c9528e5",
+  "common_feasible_protocol_sha256": "92928024f6f3a9147e45eed3535d0968d7229744465b43bbbe504ed82e086175",
+  "common_feasible_query_count": 609,
+  "contains_query_memory_or_group_ids": false,
+  "contains_raw_text_embeddings_prompts_or_responses": false,
+  "evaluation_retuning": false,
+  "group_count": 87,
+  "judge_calls": 0,
+  "paid_calls": 0,
+  "protocol_sha256": "bb7a5e1b0fc8e18c9798a612fc1c04f1f096072285f482a67d284b40d366d1f1",
+  "provider_calls": 0,
+  "published_files": {
+    "README.md": {
+      "sha256": "3c694a30cddc6f3a834ea4ad97ae1eea658ab2eb83d0f7e86e7956fa18cb763b"
+    },
+    "common_feasible_paired_deltas.csv": {
+      "row_count": 16,
+      "sha256": "da52d5fdd7e6f3f395749689f993fb89662d551e611739615431bfd172341f69"
+    },
+    "common_feasible_source_metrics.csv": {
+      "row_count": 8,
+      "sha256": "78edbcd32bd43f2c97c17bfb698bab0743a716e6b4d40f98da8d79f8d8f199b8"
+    },
+    "common_feasible_summary.csv": {
+      "row_count": 4,
+      "sha256": "18f1dac7a93a832989418a1bd60238dcb1564986a62f78d8f2b69a036d4c2d61"
+    },
+    "paired_deltas.csv": {
+      "row_count": 18,
+      "sha256": "9d852baca05ee74137b38dca031fdf031fdc200a2e806317846245643a6808c7"
+    },
+    "source_metrics.csv": {
+      "row_count": 8,
+      "sha256": "e4ea1e169b921099bb1c4824400dbb3e218e2690539edbfb47eaae1a87980c7f"
+    },
+    "summary.csv": {
+      "row_count": 4,
+      "sha256": "1104d93d6ed2669f59f02fdde95e4aa292bdae055f25b303bf75f5e15de3b420"
+    }
+  },
+  "query_count": 3767,
+  "reader_calls": 0,
+  "route_bundle_sha256": {
+    "001-rhelm-25ea22a7b2be.jsonl.gz": "c6116bf1c236e1a3aa32306e82e724294905066d4fd634f843c17d1a73c4c891",
+    "004-rhelm-ed4a7e3ae49d.jsonl.gz": "b82876e3c9d8ace3a45a1bc3dcaac875513628d03faafdf700ba87d9c587792e",
+    "010-memops-25ea22a7b2be.jsonl.gz": "09aba7af617129bc3cf4d4171771899b7899fca63af14ccdb76e8aa97ed8763f",
+    "013-memops-ed4a7e3ae49d.jsonl.gz": "dad0d3b933caf9c2a35188c473766b939e014db546e2b173e101a248977038dc"
+  },
+  "schema_version": 1
+}

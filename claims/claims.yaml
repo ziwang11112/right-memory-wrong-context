@@ -570,6 +570,13 @@ claims:
       - "results/support_controls/infeasibility_cost_sensitivity.csv"
       - "results/support_controls/few_cluster_robustness.csv"
       - "results/support_controls/manifest.json"
+      - "results/policy_axis_sensitivity/summary.csv"
+      - "results/policy_axis_sensitivity/source_metrics.csv"
+      - "results/policy_axis_sensitivity/paired_deltas.csv"
+      - "results/policy_axis_sensitivity/manifest.json"
+      - "results/submission_zero_call_diagnostics/label_missingness_summary.csv"
+      - "results/submission_zero_call_diagnostics/gold_preserving_summary.csv"
+      - "results/submission_zero_call_diagnostics/manifest.json"
     exact_values:
       top_k_10:
         global_evidence_recall: 0.3223367172107227
@@ -638,6 +645,57 @@ claims:
         leave_one_group_out_recall_delta_max: 0.10771108116796663
         rhelm_group_count: 7
         rhelm_exact_two_sided_sign_flip_p: 0.015625
+      policy_axis_sensitivity_top_k_20:
+        global_penalized_upper_risk_without_policy: 0.7868183171784588
+        namespace_penalized_upper_risk_without_policy: 0.6934982422209819
+        penalized_upper_risk_delta_without_policy: -0.09332007495747696
+        any_known_violation_delta_without_policy: -0.22209438973617682
+        known_violation_count_delta_without_policy: -0.8991911697618498
+      missingness_global_0pct:
+        coverage: 0.9918242551362285
+        lower_bound: 0.18730851336302293
+        upper_bound: 0.19548425822679424
+        bound_width: 0.008175744863771345
+      missingness_global_20pct:
+        coverage: 0.7858956889812074
+        lower_bound: 0.149606396277475
+        upper_bound: 0.3637107072962676
+        bound_width: 0.21410431101879257
+      missingness_global_50pct:
+        coverage: 0.49639219589195915
+        lower_bound: 0.09335212624846095
+        upper_bound: 0.5969599303565015
+        bound_width: 0.5036078041080405
+      missingness_global_90pct:
+        coverage: 0.09479051235816308
+        lower_bound: 0.018861558489527176
+        upper_bound: 0.9240710461313644
+        bound_width: 0.9052094876418371
+      missingness_namespace_0pct:
+        coverage: 0.9920341956362726
+        lower_bound: 0.11811277621453779
+        upper_bound: 0.12607858057826515
+        bound_width: 0.00796580436372736
+      missingness_namespace_20pct:
+        coverage: 0.7927539864677385
+        lower_bound: 0.09461001055540089
+        upper_bound: 0.3018560240876623
+        bound_width: 0.20724601353226135
+      missingness_namespace_50pct:
+        coverage: 0.4947172156346225
+        lower_bound: 0.05955045270095519
+        upper_bound: 0.5648332370663324
+        bound_width: 0.5052827843653771
+      missingness_namespace_90pct:
+        coverage: 0.10142390158388562
+        lower_bound: 0.01213805921110393
+        upper_bound: 0.9107141576272187
+        bound_width: 0.8985760984161149
+      gold_preserving_same_size_top_k_20:
+        evidence_recall: 0.8396360756421977
+        feasible_rate: 0.7466160206340636
+        penalized_upper_risk: 0.38983363526707665
+        candidates_scored: 1551.2445509049799
     confidence_intervals:
       - {metric: "top_k_10_evidence_recall_delta", estimate: 0.06713221703017538, lower: 0.05415147598649556, upper: 0.08109095232893691}
       - {metric: "top_k_10_feasible_rate_delta", estimate: 0.03179041525110043, lower: 0.02213625743295429, upper: 0.04224848468892474}
@@ -659,18 +717,27 @@ claims:
       - {metric: "top_k_100_penalized_admissibility_upper_risk_delta", estimate: -0.27393493576095884, lower: -0.30970609573192986, upper: -0.23538435309248837}
       - {metric: "top_k_100_infeasibility_risk_component_delta", estimate: -0.22299559357118776, lower: -0.2550229613185381, upper: -0.191691519764103}
       - {metric: "top_k_100_admissibility_conditional_risk_component_delta", estimate: -0.05093934218977141, lower: -0.06842618818753983, upper: -0.03367666071398375}
+      - {metric: "policy_axis_sensitivity_top_k_20_penalized_upper_risk_delta_without_policy", estimate: -0.09332007495747696, lower: -0.1147390269406861, upper: -0.07137416237938925}
+      - {metric: "policy_axis_sensitivity_top_k_20_any_known_violation_delta_without_policy", estimate: -0.22209438973617682, lower: -0.271388133355362, upper: -0.16980394389134343}
+      - {metric: "policy_axis_sensitivity_top_k_20_known_violation_count_delta_without_policy", estimate: -0.8991911697618498, lower: -1.129604598636463, upper: -0.6811731834566298}
     allowed_wording:
       - "On frozen natural-corpus rankings, trusted namespace support improved recall, feasibility, and post-hoc v2 penalized admissibility upper risk at top-k 10, 20, 50, and 100."
       - "The v2 risk reduction contains both an infeasibility reduction and a smaller feasible-prefix admissibility component at every reported depth."
       - "At comparable candidate counts, the correct trusted namespace achieved 0.533 recall while a ten-seed size-matched random partition achieved 0.061 mean recall, so pool size alone does not explain the result in this exact-dense control."
+      - "A non-deployable gold-preserving same-size oracle reached 0.840 mean recall and 0.747 feasibility, exposing substantial support and ranking headroom when released required anchors are known."
+      - "Hiding 20 percent of established evaluator judgments changed neither route nor recall but reduced coverage to 0.786/0.793 and widened the global/namespace partial-identification intervals to 0.214/0.207."
       - "Global post-filtering recovered namespace-pre-filter recall only after retrieving to depth 500; filtering a global top-20 retained global recall."
       - "After removing scope violations from the numerator, conditional upper risk did not improve, and the penalized residual-risk advantage required a positive infeasibility cost."
       - "Leave-one-group-out recall deltas remained positive, and the exact seven-group RHELM sign-flip p-value was 0.015625."
+      - "Omitting only the released policy-disallowed predicate preserved the top-20 namespace-support advantage in penalized upper risk, any known violation, and known-violation count."
     forbidden_wording:
       - "The v2 admissibility metric was used for original development selection."
       - "The fixed-budget analysis is a new held-out confirmatory experiment."
       - "Namespace support guarantees admissibility at any retrieval depth."
       - "Candidate-pool size never matters for dense retrieval."
+      - "Correct namespace identity is necessary or sufficient for optimal retrieval."
+      - "The gold-preserving support control is deployable or does not use released gold."
+      - "Evaluator-label missingness changes retrieval performance."
       - "Trusted namespace support improves conditional policy or lifecycle verification."
     known_limitations:
       - "This is a post-hoc v2 rescore of frozen rankings, not a new held-out run."
@@ -678,11 +745,15 @@ claims:
       - "Confidence intervals use namespace-group bootstrap resampling under equal-source macro-averaging."
       - "The result applies to released trusted namespaces in the evaluated public sources."
       - "The support controls are post-hoc zero-call diagnostics on frozen embeddings and labels; the random partition is not a semantic-cluster control."
+      - "The gold-preserving same-size arm is an oracle attribution diagnostic because it retains released required anchors; it is not a routing method."
+      - "The missingness sensitivity hides established evaluator judgments after retrieval; it motivates bounds but is not a model of deployment-time metadata corruption."
       - "The pre/post-filter comparison is specific to exact dense ranking and the tested depths."
       - "At zero infeasibility cost, namespace scope-excluded penalized risk is slightly higher than global dense; the primary residual advantage therefore depends on assigning positive cost to recall failure."
+      - "The policy-axis analysis is a zero-call sensitivity on the same frozen top-20 routes and source-required anchors; it does not validate policy labels or establish that policy verification is unnecessary."
     verification_tests:
       - "test_fixed_budget_claim_requires_posthoc_no_retuning_boundary"
       - "test_confidence_intervals_contain_estimates"
+      - "test_policy_omission_preserves_namespace_advantage"
 
   - id: C10
     status: post_hoc_metadata_robustness_diagnostic

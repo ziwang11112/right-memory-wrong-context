@@ -40,7 +40,7 @@ EXPECTED_METRIC_COUNTS = {
     "C6": 6,
     "C7": 4,
     "C8": 15,
-    "C9": 44,
+    "C9": 83,
     "C10": 37,
     "C11": 29,
     "C12": 5,
@@ -389,7 +389,11 @@ def validate_evidence(repository_root: Path) -> list[str]:
                         f"{manifest_path.name} source repository disagrees with index: "
                         f"{source_path}"
                     )
-                if indexed.get("frozen_commit") != manifest.get("source_snapshot_commit"):
+                source_commits = {manifest.get("source_snapshot_commit")}
+                additional_commits = manifest.get("additional_source_snapshot_commits", [])
+                if isinstance(additional_commits, list):
+                    source_commits.update(additional_commits)
+                if indexed.get("frozen_commit") not in source_commits:
                     errors.append(
                         f"{manifest_path.name} source commit disagrees with index: {source_path}"
                     )

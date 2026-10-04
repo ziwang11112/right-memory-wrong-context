@@ -3,6 +3,10 @@
 This repository starts from an empty Git history. It is not a fork and does not
 rewrite, replace, or supersede the source experiment history.
 
+The public repository is now `ziwang11112/right-memory-wrong-context`.
+Frozen source receipts retain the earlier name `ziwang11112/verify-agent-memory`
+where it was recorded at execution time; both names refer to this same project.
+
 ## Source Boundaries
 
 | Role | Identity |
@@ -84,6 +88,15 @@ The support-control analysis is bound to natural execution commit
 `d333477116735f49b7628ee5d324e92a9f608190079a7b1d699308f5ec4f1ae6`, and the
 route-bundle hashes listed in `results/support_controls/manifest.json`. It recomputes
 exact rankings locally and makes zero provider calls.
+
+The final submission diagnostics use the same natural execution commit, embedding
+checkpoint, and route bundles. Their implementation is frozen at commit
+`616d84ec3a49eade0c6cef946f741ce0ea92565e`; exact hashes and 3,767-query global and
+namespace ranking-parity counts appear in
+`results/submission_zero_call_diagnostics/manifest.json`. The missingness analysis
+changes evaluator judgments only. The gold-preserving support arm reads released
+required anchors and is explicitly non-deployable. Both diagnostics make zero
+provider calls.
 
 The verifier operating curves are bound to complete OpenAI and Gemini structured
 response hashes `fa25549ef10ce36408fc1c88312ab801ecd5ca0a447dac8f4a18f5ff0f8ec8ab`
