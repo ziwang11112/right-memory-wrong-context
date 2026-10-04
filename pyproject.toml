@@ -5,9 +5,22 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "verify-agent-memory"
 version = "0.1.0"
-description = "Reproducible tools for verifying retrieval admissibility in long-term agents."
+description = "Evaluation artifact for The Right Memory in the Wrong Context: Verifying Retrieval Admissibility in Long-Term Agent Memory."
+readme = "README.md"
+authors = [
+    {name = "Zi Wang"},
+    {name = "Xingqiao Wang"},
+    {name = "Emmanuel Addai"},
+    {name = "Devika Ambekar"},
+    {name = "Xiaowei Xu"},
+]
 requires-python = ">=3.11"
 dependencies = []
+
+[project.urls]
+Repository = "https://github.com/ziwang11112/verify-agent-memory"
+Documentation = "https://github.com/ziwang11112/verify-agent-memory/blob/main/REPRODUCIBILITY.md"
+Issues = "https://github.com/ziwang11112/verify-agent-memory/issues"
 
 [project.optional-dependencies]
 dev = [

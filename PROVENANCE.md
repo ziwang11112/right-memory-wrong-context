@@ -3,6 +3,19 @@
 This repository starts from an empty Git history. It is not a fork and does not
 rewrite, replace, or supersede the source experiment history.
 
+## Paper Human-label Audit
+
+The four-axis human-label summary in `results/human_label_audit/` is imported from
+`reports/stage3_admissibility_label_suite/human_agreement_summary.json` at the
+read-only migration snapshot below. Its source SHA-256 is
+`2ecca3d86789f5061c362a17acef9ca39163ecff647470f2c3deeed18fe0a90f`.
+It matches the paper's reported 207 record-query pairs, two annotators and
+axis-specific agreement. The importer drops reviewer-identifier hashes and the
+legacy composite that omits lifecycle. Only reported aggregates are released;
+independent raw annotations and packet text are unavailable in this package.
+The public checks validate counts, hashes, normalized evidence and claim C15,
+not a new annotation study or independent raw-label recomputation.
+
 ## Source Boundaries
 
 | Role | Identity |

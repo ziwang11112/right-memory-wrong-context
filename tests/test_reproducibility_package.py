@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts import check_reproducibility_package
 from scripts.check_reproducibility_package import _tracked_paths, validate_package
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,3 +40,19 @@ def test_anonymous_inventory_is_hash_verified_without_git(tmp_path: Path) -> Non
     readme.write_text("changed\n", encoding="utf-8")
     with pytest.raises(ValueError, match="failed its receipt"):
         _tracked_paths(tmp_path)
+
+
+def test_missing_tracked_code_and_result_directory_report_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        check_reproducibility_package,
+        "_tracked_paths",
+        lambda root: ("src/missing.py",),
+    )
+
+    errors, inventory = validate_package(tmp_path)
+
+    assert "tracked file is missing: src/missing.py" in errors
+    assert inventory["result_families"] == 0
+    assert any("uv.lock" in error for error in errors)

@@ -4,6 +4,13 @@ This guide separates checks that are fully reproducible from this checkout from
 historical executions that require external public data, model artifacts, or provider
 access. All commands are run from the repository root.
 
+The accompanying paper is **The Right Memory in the Wrong Context: Verifying
+Retrieval Admissibility in Long-Term Agent Memory**. The
+[paper alignment map](docs/PAPER_ALIGNMENT.md) identifies each evaluation population,
+its public assets, and the remaining gaps between this release and the manuscript.
+Passing file-integrity checks establishes agreement with the released snapshot; it
+does not by itself independently validate the original labels or model responses.
+
 ## 1. Environment
 
 Requirements:
@@ -16,7 +23,7 @@ Requirements:
 Install the test and plotting dependencies:
 
 ```powershell
-uv sync --extra dev --extra plots
+uv sync --locked --extra dev --extra plots
 ```
 
 ## 2. Verify the Released Package
@@ -31,6 +38,7 @@ uv run --extra dev python -m ruff format --check .
 uv run --extra dev python scripts/check_claim_contract.py
 uv run --extra dev python scripts/verify_evidence.py
 uv run --extra dev python -m scripts.check_reproducibility_package
+uv run --extra dev python -m scripts.publish_human_label_audit verify
 ```
 
 The checks validate schemas, formulas, frozen settings, source hashes, normalized
@@ -105,7 +113,9 @@ provider responses.
 
 The checked-in support-control and operating-curve bundles are fully hash-verifiable
 from Git. Recomputing them from frozen rankings or provider predictions additionally
-requires the excluded provenance archive:
+requires the excluded provenance archive. The following commands are for researchers
+who already possess those historical inputs; they are not a clean-checkout public
+reproduction path. Replace the archive location with the local copy you hold:
 
 ```powershell
 python -m scripts.run_frozen_natural_support_controls `
@@ -153,27 +163,47 @@ mismatched remote.
 
 ## 6. Full Re-execution
 
-The repository supports three different reproducibility claims:
+The supported levels differ by experiment. Verification of a result package,
+regeneration from released numeric scores, and a new data-to-model execution are
+separate operations:
 
 | Tier | Supported path | Additional material |
 | --- | --- | --- |
 | Code behavior and synthetic smoke | Yes | None |
-| Every checked-in aggregate/result/evidence hash | Yes | None |
+| Checked-in result/evidence file integrity and claim consistency | Yes | None |
 | Natural case-level aggregation, equal-source results, and case-weighted sensitivity | Yes | Tokenized `results/natural_end_to_end_case_audit/case_scores.csv` |
-| Fresh natural-corpus and provider execution | Rebuild from pinned public sources | Model artifacts and researcher-supplied provider credentials |
+| Controlled paired-exposure request construction and score aggregation | Yes | Included scenarios/targets; a complete response bundle for a new scoring run |
+| Exact historical natural rankings and post-hoc control recomputation | Archive-dependent | Excluded population, embeddings, route checkpoints, and archive implementation |
+| Historical text-verifier/provider execution replay | Archive-dependent | Excluded case/materialization and complete provider-response bundles |
+| Fresh natural-corpus/provider execution | Requires a new execution setup | Pinned upstream sources, input construction, model artifacts, credentials, and the runner's exact execution contract |
 
 The exact reported natural execution used 182,908 memories, 3,767 queries, 33,903
 route rows, and 33,903 score rows. Its source revisions, config, population,
-embedding, route, and score hashes are recorded in `PROVENANCE.md`. A fresh run uses
-the same pinned source revisions and frozen protocols, while newly generated model
-outputs are kept in ignored local execution directories.
+embedding, route, and score hashes are recorded in `PROVENANCE.md`. Those hashes
+identify the historical inputs; they do not make the inputs downloadable from this
+repository. Fetching the same upstream revisions does not alone reproduce the
+omitted construction, embeddings, rankings, or provider responses. The public
+retrieval runner accepts normalized case bundles, and natural provider runners
+require materialized cases and matching receipts in addition to upstream sources.
+No single public command currently reconstructs every historical input from a fresh
+clone. New execution outputs belong in ignored local directories and must be
+reported separately from the frozen paper results.
 
 The case-level audit exposes parsed numeric labels and SHA-256 bindings, so the public
 package can recompute source-specific intervals, the post-hoc case-weighted
-sensitivity, and every natural closure aggregate. Provider execution scripts rebuild
-requests from the pinned sources and normalize fresh responses under the same frozen
-contracts. Complete-bundle, cost-cap, and fail-closed requirements are enforced in
-code and tests; credentials remain local to the researcher.
+sensitivity, and natural closure aggregates from the released numeric labels.
+It cannot independently replay the historical payload-to-score boundary because
+the benchmark payloads and original provider records are absent. The provider
+runners construct requests from supplied materialized cases and enforce complete-
+bundle, cost-cap, and frozen-contract requirements. Credentials remain local to the
+researcher; historical execution receipts do not unlock a new paid run.
+
+The paper's human label-repeatability audit is a separate boundary: published
+aggregate agreement values can be checked against the
+[released audit summary](results/human_label_audit/), but
+the two independent reviewers' original labels are not included. The 200-output
+alternate-model-judge audit evaluates a different population and does not substitute
+for those human labels. See the alignment map for both assets.
 
 ## 7. Directory Contract
 

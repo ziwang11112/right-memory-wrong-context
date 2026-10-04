@@ -1,0 +1,25 @@
+{
+  "adjudication_applied": false,
+  "analysis": "human-label-agreement-reported-summary-v1",
+  "contains_raw_labels_text_or_reviewer_identifiers": false,
+  "file_sha256": {
+    "summary.csv": "64b86bd22726fe7d2f4b55326945b9892b8f2eb2fe22063a008350316ede67d1"
+  },
+  "independent_annotators": 2,
+  "limitations": [
+    "Reported aggregates are imported without new annotation or adjudication.",
+    "Independent human labels are unavailable in this public package; alpha is not recomputed.",
+    "The legacy usable_evidence composite excludes lifecycle and is not exported as an axis.",
+    "Low prohibited-status alpha does not validate policy labels as gold."
+  ],
+  "model_labels_counted_as_human": false,
+  "packet_count": 20,
+  "paid_calls": 0,
+  "provider_calls": 0,
+  "raw_label_recomputation_supported": false,
+  "record_count": 207,
+  "schema_version": 1,
+  "source_path": "reports/stage3_admissibility_label_suite/human_agreement_summary.json",
+  "source_sha256": "2ecca3d86789f5061c362a17acef9ca39163ecff647470f2c3deeed18fe0a90f",
+  "source_snapshot_commit": "a28093110325968c26906223e9eb0f1e078f6aad"
+}

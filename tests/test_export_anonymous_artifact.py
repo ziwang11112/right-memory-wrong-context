@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import hashlib
-import importlib.util
 import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -109,6 +109,46 @@ def test_anonymous_export_rejects_secret_shaped_content(tmp_path: Path) -> None:
         )
 
 
+def test_anonymous_export_removes_public_citation_and_redacts_all_authors(tmp_path: Path) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    output = tmp_path / "artifact"
+    names = (
+        ("Zi", "Wang"),
+        ("Xingqiao", "Wang"),
+        ("Emmanuel", "Addai"),
+        ("Devika", "Ambekar"),
+        ("Xiaowei", "Xu"),
+    )
+    citation = "authors:\n" + "".join(
+        f"  - family-names: {last}\n    given-names: {first}\n" for first, last in names
+    )
+    (repository / "CITATION.cff").write_text(citation, encoding="utf-8")
+    citation_name = "CITATION.cff"
+    (repository / "README.md").write_text(f"See [citation]({citation_name}).\n", encoding="utf-8")
+    metadata = "[project]\nname = 'verify-agent-memory'\nauthors = [\n"
+    metadata += "".join(f"  {{name = '{first} {last}'}},\n" for first, last in names)
+    (repository / "pyproject.toml").write_text(metadata + "]\n", encoding="utf-8")
+
+    report = export_anonymous_artifact(
+        repository,
+        output,
+        tracked_paths=("CITATION.cff", "pyproject.toml", "README.md"),
+        require_clean=False,
+    )
+
+    assert not (output / "CITATION.cff").exists()
+    assert report["excluded_files"] == ["CITATION.cff"]
+    assert (output / "README.md").read_text(encoding="utf-8") == (
+        "See citation (omitted from the anonymous artifact).\n"
+    )
+    exported_metadata = (output / "pyproject.toml").read_text(encoding="utf-8")
+    assert all(f"{first} {last}" not in exported_metadata for first, last in names)
+    exported_authors = tomllib.loads(exported_metadata)["project"]["authors"]
+    assert len(exported_authors) == len(names)
+    assert all(author["name"].startswith("Anonymous ") for author in exported_authors)
+
+
 def test_anonymous_export_rejects_identity_in_non_utf8_file(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     output = tmp_path / "artifact"
@@ -125,25 +165,23 @@ def test_anonymous_export_rejects_identity_in_non_utf8_file(tmp_path: Path) -> N
         )
 
 
-def test_exported_anonymizer_preserves_its_identity_rules(tmp_path: Path) -> None:
+def test_anonymous_export_omits_identity_bearing_release_tools(tmp_path: Path) -> None:
     repository = Path(__file__).resolve().parents[1]
     output = tmp_path / "artifact"
-    export_anonymous_artifact(
+    release_tools = (
+        "scripts/export_anonymous_artifact.py",
+        "tests/test_export_anonymous_artifact.py",
+    )
+    report = export_anonymous_artifact(
         repository,
         output,
-        tracked_paths=("scripts/export_anonymous_artifact.py",),
+        tracked_paths=(*release_tools, "docs/ANONYMOUS_RELEASE.md"),
         require_clean=False,
     )
 
-    exported_path = output / "scripts" / "export_anonymous_artifact.py"
-    spec = importlib.util.spec_from_file_location("exported_anonymizer", exported_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("failed to load exported anonymizer")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    private_email = "zw" + "ang@" + "ua" + "lr.edu"
-
-    redacted, changed = module._redact(f"contact={private_email}".encode())
-
-    assert changed is True
-    assert private_email.encode("utf-8") not in redacted
+    assert report["excluded_files"] == sorted(release_tools)
+    assert report["copied_file_count"] == 1
+    assert all(not (output / relative).exists() for relative in release_tools)
+    note = (output / "docs/ANONYMOUS_RELEASE.md").read_text(encoding="utf-8")
+    assert "python -m scripts.export_anonymous_artifact" not in note
+    assert "python -m scripts.check_reproducibility_package" in note

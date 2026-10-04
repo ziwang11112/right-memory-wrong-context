@@ -1,7 +1,16 @@
-# The Right Memory in the Wrong Context
+# The Right Memory in the Wrong Context: Verifying Retrieval Admissibility in Long-Term Agent Memory
 
-**Reproducible evaluation artifact for _Verifying Retrieval Admissibility in
-Long-Term Agent Memory_.**
+**Code and released evidence accompanying the paper by Zi Wang, Xingqiao Wang,
+Emmanuel Addai, Devika Ambekar, and Xiaowei Xu.**
+
+University of Arkansas at Little Rock.
+
+The repository slug and Python package remain `verify-agent-memory`. Earlier
+repository descriptions used the working title *The Wrong Memory at the Right
+Time*; this is the same research project under the manuscript title above.
+See [paper-to-artifact alignment](docs/PAPER_ALIGNMENT.md) for the experiment map
+and the limits of the public release. No arXiv identifier or DOI is assigned in
+this repository yet.
 
 Agents with long-term memory can retrieve a record that is topically relevant but still
 ineligible for the current principal, policy, intent, lifecycle state, or time. This
@@ -12,8 +21,7 @@ integrity checks used to trace that failure across four observable stages:
 Stored -> Retrieved -> Exposed -> Disclosed
 ```
 
-The package name remains `verify-agent-memory` for stable imports and commands. This
-is an evaluation and verification artifact, not a new memory index, a production
+This is an evaluation and verification artifact, not a new memory index, a production
 policy engine, or an official benchmark leaderboard.
 
 ## What Is Verified
@@ -47,7 +55,8 @@ and 3,767 RHELM/MemOps queries. On frozen top-20 rankings, trusted namespace sup
 
 - raises evidence recall from `0.432` to `0.533`;
 - raises the fraction reaching the `0.8` recall target from `0.237` to `0.311`;
-- reduces exact candidate scoring from 90,122 to 1,551 candidates (`58.1x` fewer);
+- reduces exact candidate scoring from 90,122 to 1,551 candidates (`98.3%` fewer
+  exact similarity evaluations, or `58.1x` fewer);
 - reduces feasible prefixes containing any known admissibility violation from
   `0.528` to `0.396`; and
 - reduces the mean known-violation count from `2.080` to `1.393`, without reaching
@@ -79,8 +88,8 @@ The remaining diagnostics establish important boundaries:
   matched-prefix risk interval from about `0.008` at baseline to about `0.21` after
   hiding 20% of established judgments;
 - all four controlled readers show positive selectivity between relevant-admissible
-  and relevant-inadmissible evidence, but DeepSeek retains a `+0.156`
-  relevant-inadmissible disclosure effect; and
+  and relevant-inadmissible evidence, but only DeepSeek's relevant-inadmissible
+  disclosure effect has a 95% interval excluding zero (`+0.156`, `[0.031, 0.312]`); and
 - protected- and stale-disclosure changes are inconclusive, so the artifact makes no
   general disclosure-reduction claim.
 
@@ -97,7 +106,7 @@ Requirements: Python 3.11+, Git, and [`uv`](https://docs.astral.sh/uv/). The def
 path requires no API key, provider call, GPU, or private data.
 
 ```powershell
-uv sync --extra dev --extra plots
+uv sync --locked --extra dev --extra plots
 
 uv run --extra dev python -m scripts.run_retrieval_experiment validate `
   --cases tests/fixtures/retrieval_cases.jsonl `
@@ -123,6 +132,7 @@ uv run --extra dev python -m ruff format --check .
 uv run --extra dev python scripts/check_claim_contract.py
 uv run --extra dev python scripts/verify_evidence.py
 uv run --extra dev python -m scripts.check_reproducibility_package
+uv run --extra dev python -m scripts.publish_human_label_audit verify
 ```
 
 Verify each derived result family and regenerate released plots with the commands in
@@ -137,6 +147,9 @@ paths, and common secret patterns.
 | Evaluation library, protocols, prompts, and synthetic fixtures | Included |
 | Content-free aggregate, pair-level, and tokenized derived scores | Included and hash-bound |
 | GateMem, RHELM, and MemOps source repositories | Fetchable at pinned commits and tree hashes |
+| Historical full natural rankings, embeddings, and raw provider bundles | Excluded; hashes document their provenance |
+| Human label-repeatability agreement aggregates and provenance | Included in [the audit summary](results/human_label_audit/) |
+| Independent human labels for the paper's 207-pair repeatability audit | Not included in this release |
 
 Fetch and verify redistributable public sources from their owners:
 
@@ -146,11 +159,14 @@ uv run --extra dev python -m scripts.fetch_public_sources fetch
 uv run --extra dev python -m scripts.fetch_public_sources verify
 ```
 
-The checked-in evidence reconstructs the released aggregates, source-specific
-contrasts, bootstrap intervals, controls, and figures without a provider call. For
-fresh execution, the released scripts rebuild inputs from the pinned public sources
-and run the frozen provider contracts with researcher-supplied credentials. API keys
-remain local and are never written to result packages. See
+The default path verifies released result files and their provenance without a
+provider call. Public pair-level and tokenized case scores also regenerate the
+corresponding aggregates and bootstrap intervals. Recomputing every historical
+natural-corpus ranking or verifier operating curve requires inputs from the excluded
+provenance archive; fetching upstream repositories alone does not restore them.
+Controlled request construction is public, while provider execution has additional
+input, credential, and frozen-contract requirements. Fresh model outputs constitute
+a new execution, not a replay of the historical provider responses. See
 [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md), [`data/README.md`](data/README.md),
 [`PROVENANCE.md`](PROVENANCE.md), and
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
@@ -169,6 +185,13 @@ tests/         unit, invariant, provenance, and reproducibility tests
 docs/          method and execution contracts
 ```
 
+## Citation and License
+
+Use [CITATION.cff](CITATION.cff) for the title, author order, and repository citation.
+When referring to the paper, use its full title above. A paper identifier will be
+added once available; the repository URL identifies the software artifact and is
+not an arXiv publication link.
+
 Original code and documentation are MIT licensed. Third-party datasets and source
-repositories retain their own terms. Citation metadata will be added after the
-double-blind review period; during review, refer to the accompanying paper by title.
+repositories retain their own terms. The public repository names the authors;
+anonymous review exports are separate artifacts and do not define its citation.

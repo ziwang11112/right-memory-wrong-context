@@ -42,7 +42,7 @@ def _optional_string(value: object, label: str) -> str | None:
 
 
 def _optional_bool(value: object, label: str) -> bool | None:
-    if value not in {True, False, None}:
+    if value is not None and not isinstance(value, bool):
         raise TypeError(f"{label} must be true, false, or null")
     return value
 
@@ -146,7 +146,7 @@ class InferenceCandidate:
             self.released_policy_allowed,
             self.released_lifecycle_compatible,
         ):
-            if value not in {True, False, None}:
+            if value is not None and not isinstance(value, bool):
                 raise TypeError("released candidate labels must be true, false, or unknown")
 
     @property

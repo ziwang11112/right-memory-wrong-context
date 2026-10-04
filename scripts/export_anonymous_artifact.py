@@ -23,18 +23,47 @@ EXCLUDED_PREFIXES = (
     "private/",
     "tmp/",
 )
-EXCLUDED_NAMES = {".env", ".DS_Store", "Thumbs.db"}
+EXCLUDED_NAMES = {".env", ".DS_Store", "Thumbs.db", "CITATION.cff"}
+EXCLUDED_PATHS = {
+    "scripts/export_anonymous_artifact.py",
+    "tests/test_export_anonymous_artifact.py",
+}
+ANONYMOUS_RELEASE_NOTE = """# Anonymous Artifact
+
+This reviewer artifact contains no Git history or public citation metadata. Its
+release exporter and exporter tests are omitted because their redaction rules
+contain author identifiers. Reproduction code and its tests remain available.
+
+Run these commands from the artifact root:
+
+```shell
+uv sync --locked --extra dev --extra plots
+uv run --no-sync python -m pytest
+uv run --no-sync python -m ruff check .
+uv run --no-sync python -m ruff format --check .
+uv run --no-sync python -m scripts.check_claim_contract
+uv run --no-sync python -m scripts.verify_evidence
+uv run --no-sync python -m scripts.check_reproducibility_package
+```
+
+`ANONYMIZATION_REPORT.json` records the included files and their SHA-256 hashes.
+The package check verifies those receipts without requiring Git. See
+`REPRODUCIBILITY.md` for the evidence and historical-execution boundaries.
+"""
 EXCLUDED_SUFFIXES = {".key", ".pem", ".pyc"}
 PRIVATE_HANDLE = "zi" + "wang11112"
 PRIVATE_NAME_PATTERN = r"zi" + r"\s+" + "wang"
+PAPER_AUTHOR_PATTERN = r"\b(?:Xingqiao\s+Wang|Emmanuel\s+Addai|Devika\s+Ambekar|Xiaowei\s+Xu)\b"
 PRIVATE_USERNAME_PATTERN = r"\bzi" + r"wan\b"
 PRIVATE_EMAIL_PATTERN = r"\bzw" + r"ang@ua" + r"lr\.edu\b"
 PRIVATE_INSTITUTION_PATTERN = r"\bUniversity\s+of\s+Arkansas\s+at\s+Little\s+Rock\b"
 PRIVATE_INSTITUTION_SHORT_PATTERN = r"\bUA" + r"LR\b"
 PRIVATE_WORKSPACE_PATTERN = r"\bD:[\\/]agent-mem\b"
+CITATION_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\((?:\.\.?/)?CITATION\.cff\)", re.IGNORECASE)
 IDENTITY_REPLACEMENTS = (
     ("private repository handle", re.compile(PRIVATE_HANDLE, re.IGNORECASE), "anonymous"),
     ("private owner name", re.compile(PRIVATE_NAME_PATTERN, re.IGNORECASE), "Anonymous Owner"),
+    ("paper author", re.compile(PAPER_AUTHOR_PATTERN, re.IGNORECASE), "Anonymous Author"),
     (
         "private workstation username",
         re.compile(PRIVATE_USERNAME_PATTERN, re.IGNORECASE),
@@ -89,7 +118,8 @@ def _safe_relative(path: str | Path) -> PurePosixPath:
 def _excluded(relative: PurePosixPath) -> bool:
     value = relative.as_posix()
     return (
-        relative.name in EXCLUDED_NAMES
+        value in EXCLUDED_PATHS
+        or relative.name in EXCLUDED_NAMES
         or relative.suffix.lower() in EXCLUDED_SUFFIXES
         or any(
             value == prefix.rstrip("/") or value.startswith(prefix) for prefix in EXCLUDED_PREFIXES
@@ -129,6 +159,7 @@ def _redact(data: bytes) -> tuple[bytes, bool]:
     original = text
     for _, pattern, replacement in IDENTITY_REPLACEMENTS:
         text = pattern.sub(replacement, text)
+    text = CITATION_LINK_PATTERN.sub(r"\1 (omitted from the anonymous artifact)", text)
     return text.encode("utf-8"), text != original
 
 
@@ -207,7 +238,10 @@ def export_anonymous_artifact(
             raise FileNotFoundError(f"tracked file is unavailable: {relative.as_posix()}")
         destination = output_root / Path(*relative.parts)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        data, changed = _redact(source.read_bytes())
+        if relative.as_posix() == "docs/ANONYMOUS_RELEASE.md":
+            data, changed = ANONYMOUS_RELEASE_NOTE.encode("utf-8"), True
+        else:
+            data, changed = _redact(source.read_bytes())
         destination.write_bytes(data)
         shutil.copystat(source, destination)
         copied.append(relative.as_posix())

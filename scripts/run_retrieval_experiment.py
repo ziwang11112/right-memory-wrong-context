@@ -12,6 +12,7 @@ from verify_agent_memory.experiment import (
     SelectionRisk,
     run_experiment,
     select_dev_settings,
+    validate_experiment,
 )
 from verify_agent_memory.retrieval import RetrievalConfig
 from verify_agent_memory.serialization import (
@@ -53,10 +54,9 @@ def load_protocol(path: Path) -> tuple[float, SelectionRisk, tuple[RetrievalConf
     configs = tuple(config_from_mapping(setting) for setting in settings)
     if not configs:
         raise ValueError("protocol must contain at least one setting")
-    try:
-        target_recall = float(row.get("target_recall"))
-    except (TypeError, ValueError) as error:
-        raise TypeError("target_recall must be numeric") from error
+    target_recall = row.get("target_recall")
+    if isinstance(target_recall, bool) or not isinstance(target_recall, (int, float)):
+        raise TypeError("target_recall must be numeric")
     risk_target = SelectionRisk(str(row.get("selection_risk", "admissibility_upper_bound")))
     return target_recall, risk_target, configs
 
@@ -87,6 +87,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     cases = load_cases(args.cases)
     target_recall, risk_target, configs = load_protocol(args.protocol)
     if args.command == "validate":
+        validate_experiment(cases, configs, target_recall=target_recall)
         print(
             json.dumps(
                 {

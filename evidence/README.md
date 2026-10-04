@@ -1,7 +1,7 @@
 # Evidence Package
 
 The `normalized/` directory contains content-free aggregate measurements for claims
-C2-C14. It does not contain benchmark conversations, query text, memory text, model
+C2-C15. It does not contain benchmark conversations, query text, memory text, model
 responses, embeddings, or per-query identifiers.
 
 The `examples/` directory contains four deliberately selected, abridged
@@ -24,6 +24,7 @@ identifiers are retained solely to make the qualitative examples auditable.
 | `normalized/controlled_selective_verification.csv` | Controlled focal flips, stable controls, and selective-verification error rates |
 | `normalized/natural_end_to_end.csv` | Reader-separated route-to-answer deltas on the frozen 1,523-case natural sample; GPT is sequential and all readers share one blinded judge |
 | `normalized/cross_judge_audit.csv` | Post-hoc, outcome-independent agreement audit on 200 exact-deduplicated natural outputs; one alternate judge and no full-population re-score |
+| `normalized/human_label_audit.csv` | Reported pre-adjudication aggregates for 207 record-query pairs and two humans; independent raw labels are unavailable and alpha is not recomputed |
 
 Every CSV uses the same schema:
 

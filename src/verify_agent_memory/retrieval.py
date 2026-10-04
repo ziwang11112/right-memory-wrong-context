@@ -113,7 +113,7 @@ class PolicyDecision:
             ("content_disclosure_allowed", self.content_disclosure_allowed),
             ("operation_trace_allowed", self.operation_trace_allowed),
         ):
-            if value not in {True, False, None}:
+            if value is not None and not isinstance(value, bool):
                 raise TypeError(f"{name} must be true, false, or unknown")
 
     def allowed_for(self, purpose: PolicyPurpose) -> bool | None:

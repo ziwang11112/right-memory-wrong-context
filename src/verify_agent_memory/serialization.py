@@ -41,7 +41,7 @@ def _string(value: object, label: str, *, allow_empty: bool = False) -> str:
 
 
 def _optional_bool(value: object, label: str) -> bool | None:
-    if value not in {True, False, None}:
+    if value is not None and not isinstance(value, bool):
         raise TypeError(f"{label} must be true, false, or null")
     return value
 

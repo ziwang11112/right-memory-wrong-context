@@ -28,6 +28,7 @@ from verify_agent_memory.schema import (
     Relevance,
     Scope,
 )
+from verify_agent_memory.serialization import case_from_mapping
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -131,6 +132,48 @@ def test_protocol_contains_exact_nine_public_arms() -> None:
     assert frozenset(RetrievalArm) == FROZEN_PUBLIC_ARMS | ATTRIBUTION_DIAGNOSTIC_ARMS
     assert len(protocol["settings"]) == 9
     assert protocol["development_selection"]["evaluation_retuning"] is False
+
+
+@pytest.mark.parametrize("field", ["assessment", "released_policy"])
+@pytest.mark.parametrize("numeric_label", [0, 1, 0.0, 1.0])
+def test_case_parser_rejects_numeric_policy_labels(field: str, numeric_label: object) -> None:
+    row = json.loads((ROOT / "tests/fixtures/retrieval_cases.jsonl").read_text().splitlines()[0])
+    label = "policy_allowed" if field == "assessment" else "content_disclosure_allowed"
+    row["memories"][0].setdefault(field, {})[label] = numeric_label
+    with pytest.raises(TypeError, match=label):
+        case_from_mapping(row)
+
+
+@pytest.mark.parametrize(
+    "invalid_input",
+    ["out_of_range_recall", "boolean_recall", "duplicate_setting", "duplicate_query", "dimension"],
+)
+def test_validate_rejects_inputs_that_cannot_run(
+    invalid_input: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    case_rows = [
+        json.loads(line)
+        for line in (ROOT / "tests/fixtures/retrieval_cases.jsonl").read_text().splitlines()
+    ]
+    protocol = json.loads((ROOT / "experiments/frozen_natural_protocol.json").read_text())
+    if invalid_input == "out_of_range_recall":
+        protocol["target_recall"] = 1.1
+    elif invalid_input == "boolean_recall":
+        protocol["target_recall"] = True
+    elif invalid_input == "duplicate_setting":
+        protocol["settings"].append(protocol["settings"][0])
+    elif invalid_input == "duplicate_query":
+        case_rows.append(case_rows[0])
+    else:
+        case_rows[0]["query"]["embedding"].append(0.0)
+    cases_path = tmp_path / "cases.jsonl"
+    cases_path.write_text("\n".join(json.dumps(row) for row in case_rows), encoding="utf-8")
+    protocol_path = tmp_path / "protocol.json"
+    protocol_path.write_text(json.dumps(protocol), encoding="utf-8")
+
+    with pytest.raises((TypeError, ValueError)):
+        main(["validate", "--cases", str(cases_path), "--protocol", str(protocol_path)])
+    assert '"status": "valid"' not in capsys.readouterr().out
 
 
 def test_cli_smoke_validates_runs_and_selects(

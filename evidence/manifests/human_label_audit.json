@@ -1,0 +1,17 @@
+{
+  "contains_raw_text_or_private_content": false,
+  "normalized_file": "evidence/normalized/human_label_audit.csv",
+  "normalized_sha256": "524c02bbcfa7e647420528ed9c15e093d7b764b7b12c72a4f818b2b849780e06",
+  "row_count": 12,
+  "schema_version": 1,
+  "source_artifacts": [
+    {
+      "path": "reports/stage3_admissibility_label_suite/human_agreement_summary.json",
+      "sha256": "2ecca3d86789f5061c362a17acef9ca39163ecff647470f2c3deeed18fe0a90f"
+    }
+  ],
+  "source_repository": "ziwang11112/bomi",
+  "source_snapshot_commit": "a28093110325968c26906223e9eb0f1e078f6aad",
+  "transformation_script": "scripts/publish_human_label_audit.py",
+  "transformation_script_sha256": "08ed6da40d77896526b1e31775707c42b7e51754202c6722fa33bd0d4e984549"
+}

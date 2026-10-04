@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: >-
+  If you use this code or released evidence, cite this repository and the
+  accompanying manuscript by its title. A paper DOI or arXiv identifier will be
+  added when available.
+type: software
+title: "The Right Memory in the Wrong Context: Verifying Retrieval Admissibility in Long-Term Agent Memory"
+authors:
+  - family-names: Wang
+    given-names: Zi
+    affiliation: University of Arkansas at Little Rock
+  - family-names: Wang
+    given-names: Xingqiao
+    affiliation: University of Arkansas at Little Rock
+  - family-names: Addai
+    given-names: Emmanuel
+    affiliation: University of Arkansas at Little Rock
+  - family-names: Ambekar
+    given-names: Devika
+    affiliation: University of Arkansas at Little Rock
+  - family-names: Xu
+    given-names: Xiaowei
+    affiliation: University of Arkansas at Little Rock
+repository-code: "https://github.com/ziwang11112/verify-agent-memory"
+url: "https://github.com/ziwang11112/verify-agent-memory"
+license: MIT
+abstract: >-
+  Evaluation code, frozen protocols, content-free evidence derivatives, and
+  verification tools accompanying the retrieval-admissibility manuscript.
+  The public package separates candidate support, eligibility decisions,
+  prompt exposure, and answer disclosure, and documents which historical
+  inputs remain outside the release.
+keywords:
+  - long-term agent memory
+  - retrieval admissibility
+  - reproducibility
