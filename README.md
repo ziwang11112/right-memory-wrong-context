@@ -2,8 +2,7 @@
 
 [Experiment guide](docs/PAPER_ALIGNMENT.md) ·
 [Reproducibility](REPRODUCIBILITY.md) ·
-[Results](results/README.md) ·
-[Citation](CITATION.cff)
+[Results](results/README.md)
 
 ## Overview
 
@@ -113,11 +112,7 @@ tests/         unit and reproducibility tests
 docs/          method and execution guides
 ```
 
-## Citation and License
-
-Use [CITATION.cff](CITATION.cff) for the author list and repository citation.
-A paper identifier will be added when available. The Python package name remains
-`verify-agent-memory`.
+## License
 
 Original code and documentation are released under the [MIT License](LICENSE).
 Third-party materials retain their own terms; see

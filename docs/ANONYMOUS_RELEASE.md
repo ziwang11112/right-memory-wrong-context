@@ -19,7 +19,7 @@ The exporter:
 
 1. copies only `git ls-files` entries;
 2. excludes Git history, CI metadata, caches, local configuration, raw/private data,
-   provider material, public `CITATION.cff` author metadata, and the exporter, its
+   provider material, structured citation metadata when present, and the exporter, its
    identity-bearing tests; these release instructions become a reviewer-facing
    verification note;
 3. redacts the paper's author names, owner email, institution, repository,
@@ -46,9 +46,9 @@ Pop-Location
 
 CI also builds this export and runs the remaining reproduction tests and validation
 gates in its own locked environment. The exporter and its tests contain the original
-identities in redaction rules, so they must stay in the public source repository
-along with its citation metadata. They are not included in the anonymous artifact.
+identities in redaction rules, so they must stay in the public source repository.
+They are not included in the anonymous artifact.
 
 Only after these checks pass should this directory be initialized as a new anonymous
 Git repository with a separate anonymous identity. The public repository remains the
-canonical source for the paper's title, authors, and citation.
+canonical source for the paper's title and accompanying code.
