@@ -1,10 +1,5 @@
 # The Right Memory in the Wrong Context: Verifying Retrieval Admissibility in Long-Term Agent Memory
 
-Code and released evidence accompanying the paper by **Zi Wang, Xingqiao Wang,
-Emmanuel Addai, Devika Ambekar, and Xiaowei Xu**.
-
-University of Arkansas at Little Rock.
-
 [Experiment guide](docs/PAPER_ALIGNMENT.md) ·
 [Reproducibility](REPRODUCIBILITY.md) ·
 [Results](results/README.md) ·
@@ -16,9 +11,11 @@ A memory can be relevant to a query yet inadmissible for the current principal,
 policy, intent, or lifecycle state. This repository implements the paper's
 evaluation framework and core experiments, tracing memory use through four stages:
 
-```text
-Stored -> Retrieved -> Exposed -> Disclosed
-```
+![Retrieval-admissibility framework: query context and candidate support, scope/policy/lifecycle verification, agent reader, and an identity-preserving audit trace.](docs/assets/retrieval-admissibility-framework.png)
+
+*Framework overview from the paper. Query context constrains candidate support;
+scope (N), policy (P), and lifecycle (L) verification precede prompt assembly.
+The audit trace connects storage, retrieval, exposure, and observed disclosure.*
 
 | Stage | What the code measures |
 | --- | --- |
