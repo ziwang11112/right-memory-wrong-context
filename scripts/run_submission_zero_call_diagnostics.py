@@ -15,9 +15,8 @@ from typing import Any
 
 import numpy as np
 
-import scripts as scripts_package
 from scripts.run_frozen_natural_support_expansion import (
-    _prepare_archive_imports,
+    _input_bindings,
     _sha256_file,
     _write_csv,
     _write_json,
@@ -250,8 +249,8 @@ def _score(
     )
 
 
-def _support_baselines() -> list[dict[str, str]]:
-    with SUPPORT_MAIN_PATH.open(encoding="utf-8", newline="") as handle:
+def _support_baselines(path: Path = SUPPORT_MAIN_PATH) -> list[dict[str, str]]:
+    with path.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
     by_arm = {row["arm"]: row for row in rows}
     return [
@@ -260,11 +259,27 @@ def _support_baselines() -> list[dict[str, str]]:
     ]
 
 
+def _support_input_path(run_root: Path | None) -> Path:
+    if run_root is None:
+        return SUPPORT_MAIN_PATH
+    support_dir = run_root / "support_controls"
+    path = support_dir / "support_control_main.csv"
+    manifest = json.loads((support_dir / "manifest.json").read_text(encoding="utf-8"))
+    if manifest.get("input_run_manifest_sha256") != _sha256_file(run_root / "manifest.json"):
+        raise ValueError("support-control baseline belongs to a different public run")
+    receipt = manifest.get("published_files", {}).get(path.name, {})
+    if receipt.get("sha256") != _sha256_file(path):
+        raise ValueError("support-control baseline hash differs from its manifest")
+    return path
+
+
 def _gold_summary(
     gold_rows: Sequence[Mapping[str, object]],
+    *,
+    support_path: Path = SUPPORT_MAIN_PATH,
 ) -> list[dict[str, object]]:
     gold = _summarize_seeds(gold_rows, keys=("arm",))[0]
-    baselines = _support_baselines()
+    baselines = _support_baselines(support_path)
     output: list[dict[str, object]] = []
     for arm in SUPPORT_ARMS:
         if arm == "gold_preserving_same_size":
@@ -405,22 +420,19 @@ def _write_readme(
     )
 
 
-def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
+def _run(
+    archive_root: Path,
+    output_dir: Path,
+    batch_size: int,
+    *,
+    source_root: Path | None = None,
+    run_root: Path | None = None,
+) -> None:
     protocol = _load_protocol()
-    archive_scripts = str(archive_root / "scripts")
-    if archive_scripts not in scripts_package.__path__:
-        scripts_package.__path__.append(archive_scripts)
-    api = _prepare_archive_imports(archive_root)
-    config_path = (
-        archive_root / "experiments" / "configs" / "stage3_natural_corpus_public_eval.json"
-    )
-    route_root = (
-        archive_root
-        / "data"
-        / "private"
-        / "stage3_natural_corpus_admissibility_eval"
-        / "route_bundles"
-    )
+    api = _input_bindings(archive_root, source_root=source_root, run_root=run_root)
+    support_path = _support_input_path(run_root)
+    config_path = Path(api["config_path"])
+    route_root = Path(api["route_root"])
     config = json.loads(config_path.read_text(encoding="utf-8"))
     selected = {row["arm"]: row for row in config["selected_settings"]}
     config_ids = {
@@ -650,12 +662,12 @@ def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
         }
         for seed in protocol.seeds
     ]
-    gold_summary = _gold_summary(gold_seed_rows)
+    gold_summary = _gold_summary(gold_seed_rows, support_path=support_path)
 
     zero_missing = {
         str(row["arm"]): row for row in missing_summary if float(row["missing_rate"]) == 0.0
     }
-    baselines = {row["arm"]: row for row in _support_baselines()}
+    baselines = {row["arm"]: row for row in _support_baselines(support_path)}
     for arm, support_arm in (
         ("global_dense", "global_dense"),
         ("namespace_dense", "namespace_pre_filter"),
@@ -691,19 +703,32 @@ def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
     raw_protocol = json.loads(PROTOCOL_PATH.read_text(encoding="utf-8"))
     manifest = {
         "schema_version": 1,
+        "execution_kind": "archive_replay" if run_root is None else "public_source_reproduction",
+        "input_run_manifest_sha256": None
+        if run_root is None
+        else _sha256_file(run_root / "manifest.json"),
         "analysis": raw_protocol["protocol_id"],
         "analysis_commit": head,
-        "base_execution_commit": raw_protocol["base_execution_commit"],
-        "embedding_checkpoint_sha256": raw_protocol["base_embedding_checkpoint_sha256"],
+        "base_execution_commit": raw_protocol["base_execution_commit"]
+        if run_root is None
+        else None,
+        "embedding_checkpoint_sha256": _sha256_file(api["embedding_checkpoint_path"]),
         "protocol_sha256": _sha256_file(PROTOCOL_PATH),
-        "support_control_main_sha256": _sha256_file(SUPPORT_MAIN_PATH),
+        "support_control_main_sha256": _sha256_file(support_path),
         "route_bundle_sha256": dict(sorted(route_hashes.items())),
         "published_files": published,
         "query_count": sum(
             missing_accumulators[("global_dense", 0.0, protocol.seeds[0], source)].query_count
             for source in sources
         ),
-        "group_count": 87,
+        "group_count": len(
+            {
+                (source, query.namespace_id)
+                for source, corpus in inputs.corpora.items()
+                for query in corpus.queries
+                if query.split == "eval"
+            }
+        ),
         "global_ranking_checks": global_checks,
         "namespace_ranking_checks": namespace_checks,
         "contains_query_memory_or_group_ids": False,
@@ -732,20 +757,31 @@ def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive-root", type=Path, default=DEFAULT_ARCHIVE)
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=ROOT / "results" / "submission_zero_call_diagnostics",
-    )
+    parser.add_argument("--source-root", type=Path)
+    parser.add_argument("--run-root", type=Path)
+    parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--batch-size", type=int, default=32)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.output_dir is None:
+        args.output_dir = (
+            args.run_root / "submission_diagnostics"
+            if args.run_root is not None
+            else ROOT / "results" / "submission_zero_call_diagnostics"
+        )
+    return args
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     if args.batch_size < 1:
         raise ValueError("batch size must be positive")
-    _run(args.archive_root.resolve(), args.output_dir.resolve(), args.batch_size)
+    _run(
+        args.archive_root.resolve(),
+        args.output_dir.resolve(),
+        args.batch_size,
+        source_root=args.source_root,
+        run_root=args.run_root,
+    )
     return 0
 
 

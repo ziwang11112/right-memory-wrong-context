@@ -39,7 +39,7 @@ artifacts:
     frozen_commit: "a28093110325968c26906223e9eb0f1e078f6aad"
     source_path: "bomi/bench/stage3_memops_mapping.py"
     source_sha256: "43649753b297badd5136d6d9cef1721686aca6ec42761591b01cbd9a6da9489a"
-    intended_normalized_destination: "src/verify_agent_memory/sources/memops.py"
+    intended_normalized_destination: "src/verify_agent_memory/natural_memops.py"
     transformation_required: "Rewrite as a source adapter after upstream license and schema review."
     public_label: "MemOps adapter"
     contains_raw_text_or_private_content: false
@@ -50,7 +50,7 @@ artifacts:
     frozen_commit: "a28093110325968c26906223e9eb0f1e078f6aad"
     source_path: "bomi/bench/stage3_rhelm_evidence_resolution.py"
     source_sha256: "22ac8bd2753d4ddc5d025199540dad02a8f9498fffaee80657148f97af082417"
-    intended_normalized_destination: "src/verify_agent_memory/sources/rhelm.py"
+    intended_normalized_destination: "src/verify_agent_memory/natural_rhelm.py"
     transformation_required: "Rewrite evidence resolution after upstream license and ambiguity review."
     public_label: "RHELM adapter"
     contains_raw_text_or_private_content: false
@@ -61,7 +61,7 @@ artifacts:
     frozen_commit: "a28093110325968c26906223e9eb0f1e078f6aad"
     source_path: "bomi/bench/stage3_natural_corpus_admissibility.py"
     source_sha256: "b08af8554909a35b88211ce1485b03f55608eb62e808f9a79ab7e90f571ff13b"
-    intended_normalized_destination: "src/verify_agent_memory/analysis/natural_corpus.py"
+    intended_normalized_destination: "src/verify_agent_memory/natural_corpus.py"
     transformation_required: "Extract public-source construction logic and remove internal runtime dependencies."
     public_label: "public-source audit"
     contains_raw_text_or_private_content: false
@@ -988,4 +988,92 @@ artifacts:
     intended_normalized_destination: "evidence/normalized/fixed_budget_support.csv"
     transformation_required: "Preserve exact route hashes, implementation commit, parity counts, and zero-call boundaries."
     public_label: "submission diagnostic provenance"
+    contains_raw_text_or_private_content: false
+
+  - id: code_natural_source_indices
+    category: PORT_AND_REFACTOR
+    old_repository: "ziwang11112/bomi"
+    frozen_commit: "a28093110325968c26906223e9eb0f1e078f6aad"
+    source_path: "bomi/bench/stage3_admissibility_audit.py"
+    source_sha256: "e440a596c176ece474f1d879f5100a89ebadec48c75852539a2c1aff8052da29"
+    intended_normalized_destination: "src/verify_agent_memory/natural_source_indices.py"
+    transformation_required: "Extract public RHELM and MemOps readers; omit audit runs and human records."
+    public_label: "public record readers"
+    contains_raw_text_or_private_content: false
+
+  - id: code_natural_input_identities
+    category: PORT_AND_REFACTOR
+    old_repository: "ziwang11112/bomi"
+    frozen_commit: "a28093110325968c26906223e9eb0f1e078f6aad"
+    source_path: "bomi/bench/stage3_natural_embedding_pilot.py"
+    source_sha256: "53d8d4651de35d22dbc3966442aa976635bf289c0b53b7f4557baaf60a60d4d3"
+    intended_normalized_destination: "src/verify_agent_memory/natural_inputs.py"
+    transformation_required: "Preserve content-free identities and population hashing without pilot execution gates."
+    public_label: "natural input identities"
+    contains_raw_text_or_private_content: false
+
+  - id: code_natural_embedding_storage
+    category: PORT_AND_REFACTOR
+    old_repository: "ziwang11112/bomi"
+    frozen_commit: "a28093110325968c26906223e9eb0f1e078f6aad"
+    source_path: "bomi/bench/stage3_natural_embedding_store.py"
+    source_sha256: "ec4360ac3f80cd3f837bbda01d71972e0b544fa73d53530e1a76cf3ecc8129ab"
+    intended_normalized_destination: "src/verify_agent_memory/natural_storage.py"
+    transformation_required: "Retain shard validation and input bindings with portable public paths."
+    public_label: "embedding storage"
+    contains_raw_text_or_private_content: false
+
+  - id: code_natural_route_storage
+    category: PORT_AND_REFACTOR
+    old_repository: "ziwang11112/bomi"
+    frozen_commit: "a28093110325968c26906223e9eb0f1e078f6aad"
+    source_path: "bomi/bench/stage3_natural_route_store.py"
+    source_sha256: "2821986329e26f5d4f9349bdc3127be72eab47ce5894a3f2691d7b43c23f3b9f"
+    intended_normalized_destination: "src/verify_agent_memory/natural_storage.py"
+    transformation_required: "Preserve route fields and deterministic serialization without archive path dependencies."
+    public_label: "route storage"
+    contains_raw_text_or_private_content: false
+
+  - id: code_natural_retrieval_runtime
+    category: PORT_AND_REFACTOR
+    old_repository: "ziwang11112/bomi"
+    frozen_commit: "a28093110325968c26906223e9eb0f1e078f6aad"
+    source_path: "bomi/bench/stage3_natural_dev_runtime.py"
+    source_sha256: "98f446e5fac3b486cd3f1bb943bbee4da4fd92e01ae84aaa32778ebb601b8d85"
+    intended_normalized_destination: "src/verify_agent_memory/natural_retrieval.py"
+    transformation_required: "Extract exact NumPy and BM25 retrieval for the nine selected frozen settings."
+    public_label: "natural retrieval runtime"
+    contains_raw_text_or_private_content: false
+
+  - id: code_natural_stable_ranking
+    category: PORT_AND_REFACTOR
+    old_repository: "ziwang11112/bomi"
+    frozen_commit: "a28093110325968c26906223e9eb0f1e078f6aad"
+    source_path: "bomi/experiments/stage3_natural_dev_routing.py"
+    source_sha256: "83c74b57512c3ff440159017ea26d4aae0b53c4ea77fcfce5a0cf5feafea52af"
+    intended_normalized_destination: "src/verify_agent_memory/natural_retrieval.py"
+    transformation_required: "Preserve configuration identity and stable memory-ID tie breaking; exclude development orchestration."
+    public_label: "frozen ranking configurations"
+    contains_raw_text_or_private_content: false
+
+  - id: code_natural_public_encoder
+    category: PORT_AND_REFACTOR
+    old_repository: "ziwang11112/bomi"
+    frozen_commit: "a28093110325968c26906223e9eb0f1e078f6aad"
+    source_path: "scripts/run_stage3_natural_corpus_embedding_pilot.py"
+    source_sha256: "1bb387218b1370f14fa7ab28bcc1912c3dc45766df3e85270133c1dbae94f008"
+    intended_normalized_destination: "scripts/run_public_natural_retrieval.py"
+    transformation_required: "Preserve text preparation and pooling; replace machine-specific model paths and private execution gates."
+    public_label: "public local encoder"
+    contains_raw_text_or_private_content: false
+
+  - id: code_natural_public_pipeline
+    category: PORT_AND_REFACTOR
+    old_repository: "ziwang11112/bomi"
+    frozen_commit: "a28093110325968c26906223e9eb0f1e078f6aad"
+    source_path: "scripts/run_stage3_natural_corpus_public_eval.py"
+    source_sha256: "950d4e9327cd22a0a9eb192630f42c3e8b22695f28836967dcd3f0e56c1c794f"
+    intended_normalized_destination: "scripts/run_public_natural_retrieval.py"
+    transformation_required: "Build the evaluation population and route inputs from pinned public sources without private archives."
+    public_label: "public natural pipeline"
     contains_raw_text_or_private_content: false

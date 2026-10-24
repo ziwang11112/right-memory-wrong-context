@@ -63,8 +63,11 @@ The following derived material also remains excluded:
 
 Their frozen identities, counts, and SHA-256 receipts are recorded in
 `PROVENANCE.md`, `SOURCE_ARTIFACTS.yaml`, and result manifests. Checked-in aggregate
-results can be verified without these materials; exact provider reruns require the
-original public inputs, credentials, and separately authorized execution contracts.
+results can be verified without these materials. The
+[public reproduction pipeline](../REPRODUCIBILITY.md#6-natural-corpus-reproduction)
+builds inputs from these source checkouts and writes new embeddings, rankings, and
+provider outputs to an ignored run directory. It uses the released source adapters
+and does not require the original private archive.
 
 See `docs/LICENSE_AUDIT.md` and `THIRD_PARTY_NOTICES.md` for the complete license
 decision.

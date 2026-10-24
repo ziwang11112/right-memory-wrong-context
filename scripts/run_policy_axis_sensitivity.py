@@ -14,9 +14,8 @@ from typing import Any
 
 import numpy as np
 
-import scripts as scripts_package
 from scripts.run_frozen_natural_support_expansion import (
-    _prepare_archive_imports,
+    _input_bindings,
     _sha256_file,
     _write_csv,
     _write_json,
@@ -343,7 +342,7 @@ def _write_readme(
     lines = [
         "# Policy-Axis Sensitivity",
         "",
-        "This frozen, zero-call sensitivity reuses the published global-dense and",
+        "This frozen, zero-call sensitivity reuses the input run's global-dense and",
         "namespace-dense top-20 routes. It omits only the released policy-disallowed",
         "predicate from admissibility scoring; source-required anchors, scope, lifecycle,",
         "rankings, route limits, and the 0.8 recall target remain unchanged.",
@@ -427,23 +426,18 @@ def _write_readme(
     (output_dir / OUTPUT_NAMES["readme"]).write_bytes("\n".join(lines).encode("utf-8"))
 
 
-def _run(archive_root: Path, output_dir: Path) -> None:
+def _run(
+    archive_root: Path,
+    output_dir: Path,
+    *,
+    source_root: Path | None = None,
+    run_root: Path | None = None,
+) -> None:
     protocol = _load_protocol()
     common_protocol = _load_common_protocol()
-    archive_scripts = str(archive_root / "scripts")
-    if archive_scripts not in scripts_package.__path__:
-        scripts_package.__path__.append(archive_scripts)
-    api = _prepare_archive_imports(archive_root)
-    config_path = (
-        archive_root / "experiments" / "configs" / "stage3_natural_corpus_public_eval.json"
-    )
-    route_root = (
-        archive_root
-        / "data"
-        / "private"
-        / "stage3_natural_corpus_admissibility_eval"
-        / "route_bundles"
-    )
+    api = _input_bindings(archive_root, source_root=source_root, run_root=run_root)
+    config_path = Path(api["config_path"])
+    route_root = Path(api["route_root"])
     config = json.loads(config_path.read_text(encoding="utf-8"))
     selected = {row["arm"]: row for row in config["selected_settings"]}
     config_ids = {
@@ -516,7 +510,8 @@ def _run(archive_root: Path, output_dir: Path) -> None:
 
     source_rows = _source_rows(records)
     summary_rows = _macro_rows(source_rows)
-    _validate_full_family(summary_rows)
+    if run_root is None:
+        _validate_full_family(summary_rows)
     delta_rows = _paired_deltas(
         records,
         summary_rows,
@@ -567,9 +562,13 @@ def _run(archive_root: Path, output_dir: Path) -> None:
         published[path.name] = receipt
     manifest = {
         "schema_version": 1,
+        "execution_kind": "archive_replay" if run_root is None else "public_source_reproduction",
+        "input_run_manifest_sha256": None
+        if run_root is None
+        else _sha256_file(run_root / "manifest.json"),
         "analysis": "natural-policy-axis-sensitivity-v1",
         "analysis_commit": head,
-        "base_execution_commit": protocol["base_execution_commit"],
+        "base_execution_commit": protocol["base_execution_commit"] if run_root is None else None,
         "protocol_sha256": _sha256_file(PROTOCOL_PATH),
         "common_feasible_protocol_sha256": _sha256_file(COMMON_PROTOCOL_PATH),
         "route_bundle_sha256": dict(sorted(route_hashes.items())),
@@ -598,15 +597,27 @@ def _run(archive_root: Path, output_dir: Path) -> None:
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive-root", type=Path, default=DEFAULT_ARCHIVE)
-    parser.add_argument(
-        "--output-dir", type=Path, default=ROOT / "results" / "policy_axis_sensitivity"
-    )
-    return parser.parse_args(argv)
+    parser.add_argument("--source-root", type=Path)
+    parser.add_argument("--run-root", type=Path)
+    parser.add_argument("--output-dir", type=Path)
+    args = parser.parse_args(argv)
+    if args.output_dir is None:
+        args.output_dir = (
+            args.run_root / "policy_axis_sensitivity"
+            if args.run_root is not None
+            else ROOT / "results" / "policy_axis_sensitivity"
+        )
+    return args
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    _run(args.archive_root.resolve(), args.output_dir.resolve())
+    _run(
+        args.archive_root.resolve(),
+        args.output_dir.resolve(),
+        source_root=args.source_root,
+        run_root=args.run_root,
+    )
     return 0
 
 

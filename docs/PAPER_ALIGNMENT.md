@@ -12,7 +12,7 @@ Installation and execution commands are in [REPRODUCIBILITY.md](../REPRODUCIBILI
 | Paper component | Implementation | Released results |
 | --- | --- | --- |
 | Three-valued admissibility and matched-recall evaluation | [Admissibility](../src/verify_agent_memory/admissibility.py), [metrics](../src/verify_agent_memory/metrics.py), [method guide](EXPERIMENT_METHODS.md) | [Claim contract](../CLAIM_CONTRACT.md) |
-| RQ1: candidate support and natural retrieval | [Retrieval runner](../scripts/run_retrieval_experiment.py), [frozen protocol](../experiments/frozen_natural_protocol.json) | [Natural results](../results/supplemental_natural/), [support controls](../results/support_controls/), [policy sensitivity](../results/policy_axis_sensitivity/) |
+| RQ1: candidate support and natural retrieval | [Public-source pipeline](../scripts/run_public_natural_retrieval.py), [normalized-case runner](../scripts/run_retrieval_experiment.py), [frozen protocol](../experiments/frozen_natural_protocol.json) | [Natural results](../results/supplemental_natural/), [support controls](../results/support_controls/), [policy sensitivity](../results/policy_axis_sensitivity/) |
 | RQ2: eligibility verification | [Inferred-admissibility runner](../scripts/run_inferred_admissibility_experiment.py), [controlled cases](../experiments/counterfactual_admissibility_cases.json) | [Text-only diagnostic](../results/inferred_admissibility/), [controlled verification](../results/counterfactual_admissibility/) |
 | RQ3: natural route-to-reader association | [Natural end-to-end runner](../scripts/run_natural_end_to_end_experiment.py), [protocols](../experiments/README.md#natural-route-to-reader-evaluation) | [Normalized results](../evidence/normalized/natural_end_to_end.csv), [tokenized case scores](../results/natural_end_to_end_case_audit/) |
 | RQ3: controlled exposure-to-disclosure intervention | [Exposure runner](../scripts/run_counterfactual_exposure_intervention.py), [protocol](../experiments/counterfactual_exposure_protocol.json) | [Exposure results](../results/counterfactual_exposure/), [separate reader replication](../results/claude_opus5_exposure_replication/) |
@@ -34,11 +34,12 @@ Additional diagnostics and their evidence boundaries are indexed in
 
 ## Reproduction Scope
 
-The library, synthetic examples, constructed inputs, and released-result checks run
-from this repository. Public pair-level and tokenized case scores regenerate their
-corresponding aggregates and bootstrap intervals. Historical embeddings, complete
-natural rankings, raw prompts, and provider responses are outside the release;
-fresh provider calls are new executions.
+The library, source adapters, synthetic examples, constructed inputs, and
+released-result checks run from this repository. The natural pipeline constructs
+the frozen evaluation population from pinned public sources, then produces
+embeddings, rankings, and reader inputs. Public pair-level and tokenized case scores
+regenerate the corresponding aggregates and bootstrap intervals. Historical model
+caches are outside the release; fresh runs generate their own outputs and receipts.
 
 Independent human-annotation evidence is outside the validated release. The
 separate [alternate-model-judge audit](../results/natural_cross_judge_audit/)

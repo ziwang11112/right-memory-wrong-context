@@ -61,34 +61,51 @@ over-refusal label. Reader models are reported separately. Paired 95% intervals 
 
 ## Execution
 
-Raw public-source text, prompts, and provider responses stay under the ignored
-`tmp/natural_end_to_end/` directory. The public case-audit package may include only
-tokenized, content-free numeric scores and private-record hashes; it never includes
-queries, memory text, reference answers, model answers, or judge rationales.
+First build and validate a public retrieval run as described in
+[the reproducibility guide](../REPRODUCIBILITY.md#6-natural-corpus-reproduction).
+Then materialize its top-20 cases:
 
 ```powershell
-python scripts/materialize_natural_end_to_end_cases.py
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py validate
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py plan-verifier
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py fixture --stage verifier
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py execute-verifier
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py plan-readers
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py fixture --stage reader --provider OpenAI
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py fixture --stage reader --provider Anthropic
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py fixture --stage reader --provider Gemini
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py fixture --stage reader --provider DeepSeek
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py execute-reader --provider OpenAI
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py execute-reader --provider Anthropic
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py execute-reader --provider Gemini
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py execute-reader --provider DeepSeek
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py plan-judge
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py fixture --stage judge
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py execute-judge
-.\.venv\Scripts\python.exe scripts\run_natural_end_to_end_experiment.py score
+uv run --no-sync python -m scripts.materialize_natural_end_to_end_cases `
+  --source-root data/raw/upstream --run-root tmp/natural_reproduction
 ```
 
+Cases, provider records, and new results are written below
+`tmp/natural_reproduction/natural_end_to_end/`. All provider commands use this prefix:
+
+```powershell
+uv run --no-sync python -m scripts.run_natural_end_to_end_experiment `
+  --mode reproduction --run-root tmp/natural_reproduction validate
+```
+
+Replace the final `validate` with the commands below, in order. `plan-*` commands
+prepare requests and cost estimates without contacting providers. `fixture` makes
+one synthetic API call to verify the configured provider contract; `execute-*`
+runs the actual stage. Credentials are read locally from the repository's ignored
+`.env`, or the file specified with `--dotenv` before the command.
+
+| Stage | Commands after the common prefix |
+| --- | --- |
+| Verifier | `plan-verifier`, `plan-fixture --stage verifier`, `fixture --stage verifier`, `execute-verifier` |
+| Readers | `plan-readers`; then `plan-fixture --stage reader --provider Gemini`, `fixture --stage reader --provider Gemini`, `execute-reader --provider Gemini`; repeat for `DeepSeek` |
+| Judge | `plan-judge`, `plan-fixture --stage judge`, `fixture --stage judge`, `execute-judge` |
+| Aggregation | `score` |
+
+The default reproduction profile uses the frozen Gemini/DeepSeek reader panel and
+the final dated Haiku judge configuration. The verifier and readers use the 3,767
+query population; semantic scoring uses all 523 RHELM cases and the fixed,
+hash-selected 1,000 MemOps cases. The run records its protocol, prompts,
+materialization, and sampling rule; the score manifest records the selected case-ID
+set's hash. The separately released GPT reader
+replication and its results retain their own protocol and execution records.
+
+A fresh run creates its own receipts. Historical mode and its receipt checks remain
+available for replaying original archives; they are not required by reproduction
+mode. Model outputs can differ across new executions, so new results are saved
+separately from the checked-in paper results.
+
 Every successful call is checkpointed separately. A provider failure stops new
-submissions after the small in-flight window drains; completed calls remain resumable.
-Each provider stage holds an atomic single-writer lock for its full execution. A stale
-lock fails closed and must be audited rather than removed automatically. No semantic
+submissions after the small in-flight window drains; completed calls remain
+resumable. Each provider stage holds an atomic single-writer lock. Full-bundle
+coverage, request hashes, and cost caps are checked before scoring. No semantic
 repair or outcome-selective rerun is performed.

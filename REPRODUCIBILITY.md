@@ -110,36 +110,18 @@ uv run --extra dev --extra plots python -m scripts.plot_counterfactual_exposure_
 Plot scripts consume checked-in score tables only. They do not read credentials or raw
 provider responses.
 
-The checked-in support-control and operating-curve bundles are fully hash-verifiable
-from Git. Recomputing them from frozen rankings or provider predictions additionally
-requires the excluded provenance archive. The following commands are for researchers
-who already possess those historical inputs; they are not a clean-checkout public
-reproduction path. Replace the archive location with the local copy you hold:
+The checked-in support-control and operating-curve bundles are hash-verifiable from
+Git. Section 6 builds new natural rankings for the support diagnostics. Operating
+curves can also be recalculated from a complete local verifier-response bundle:
 
 ```powershell
-python -m scripts.run_frozen_natural_support_controls `
-  --archive-root ../bomi-codex-starter `
-  --output-dir tmp/support_controls
-
-python scripts/run_policy_axis_sensitivity.py `
-  --archive-root ../bomi-codex-starter `
-  --output-dir tmp/policy_axis_sensitivity
-
-python -m scripts.run_submission_zero_call_diagnostics `
-  --archive-root ../bomi-codex-starter `
-  --output-dir tmp/submission_zero_call_diagnostics
-
 python -m scripts.run_frozen_posthoc_robustness `
   --cases tmp/inferred_admissibility/cases.jsonl `
   --response-dir tmp/inferred_admissibility_canonical/primary_first_committed `
   --output-dir tmp/posthoc_robustness
 ```
 
-The support-control, policy-sensitivity, and submission-diagnostic commands read
-frozen route bundles; the submission diagnostic additionally reuses the frozen
-embedding table for an exact gold-preserving same-size oracle control. The
-operating-curve command reads frozen structured verifier responses. All four are
-zero-call post-hoc analyses and none reads credentials or contacts a provider.
+This command reads structured verifier responses and makes no provider calls.
 
 ## 5. Acquire Exact Public Sources
 
@@ -160,11 +142,94 @@ Checkouts are placed in ignored `data/raw/upstream/` directories. The tool verif
 both exact commit and Git tree hashes and refuses to replace a non-Git path or use a
 mismatched remote.
 
-## 6. Full Re-execution
+## 6. Natural-Corpus Reproduction
 
-The supported levels differ by experiment. Verification of a result package,
-regeneration from released numeric scores, and a new data-to-model execution are
-separate operations:
+The public pipeline constructs inputs from the pinned sources, generates Qwen
+embeddings, runs the nine frozen retrieval configurations, and materializes
+route-to-reader cases. It imports only this repository's modules and installed
+dependencies. Choose a new output directory for each execution; the examples use
+the ignored `tmp/natural_reproduction/` directory.
+
+### Build the inputs
+
+```powershell
+uv sync --locked --extra dev --extra plots --extra reproduction
+uv run --no-sync python -m scripts.fetch_public_sources fetch --source rhelm --source memops
+uv run --no-sync python -m scripts.run_public_natural_retrieval build `
+  --source-root data/raw/upstream --run-root tmp/natural_reproduction
+```
+
+The builder checks exact source revisions, split assignments, and the expected
+182,908 memories and 3,767 evaluation queries. It reconstructs 176,512 unique
+embedding identities. The query prefix, source-text hashes, and frozen retrieval
+settings are bound to the run manifest. This step needs no model or API key.
+
+### Encode and retrieve
+
+Install the optional local-model runtime and download the pinned model snapshot:
+
+```powershell
+uv sync --locked --extra dev --extra plots --extra encoder
+uv run --no-sync python -c "from huggingface_hub import snapshot_download; print(snapshot_download('Qwen/Qwen3-Embedding-8B', revision='1d8ad4ca9b3dd8059ad90a75d4983776a23d44af'))"
+```
+
+Pass the returned snapshot directory as `--model-path`:
+
+```powershell
+uv run --no-sync python -m scripts.run_public_natural_retrieval embed `
+  --source-root data/raw/upstream --run-root tmp/natural_reproduction `
+  --model-path /path/to/snapshots/1d8ad4ca9b3dd8059ad90a75d4983776a23d44af
+uv run --no-sync python -m scripts.run_public_natural_retrieval route `
+  --source-root data/raw/upstream --run-root tmp/natural_reproduction
+uv run --no-sync python -m scripts.run_public_natural_retrieval validate `
+  --source-root data/raw/upstream --run-root tmp/natural_reproduction
+```
+
+Embedding runs the 8B model locally and requires sufficient GPU/system memory.
+The encoder uses the frozen instruction, 512-token truncation, last-token pooling,
+and 4,096-dimensional normalized float32 vectors. Retrieval preserves the selected
+parameters, source visibility rules, and deterministic memory-ID tie breaking.
+The complete run contains 18 source-by-method bundles and 33,903 route rows.
+Completed shards and route bundles can be resumed using the same run directory;
+their input bindings and hashes are checked before reuse.
+
+### Recompute support diagnostics
+
+```powershell
+uv run --no-sync python -m scripts.run_frozen_natural_support_controls `
+  --source-root data/raw/upstream --run-root tmp/natural_reproduction `
+  --output-dir tmp/natural_reproduction/support_controls
+uv run --no-sync python -m scripts.run_policy_axis_sensitivity `
+  --source-root data/raw/upstream --run-root tmp/natural_reproduction `
+  --output-dir tmp/natural_reproduction/policy_axis_sensitivity
+uv run --no-sync python -m scripts.run_submission_zero_call_diagnostics `
+  --source-root data/raw/upstream --run-root tmp/natural_reproduction `
+  --output-dir tmp/natural_reproduction/submission_diagnostics
+```
+
+These commands read the new run's rankings and embeddings without model calls.
+They compare arms within that run and retain its input hashes. The explicit
+`--archive-root` compatibility option remains available for historical archives.
+
+### Materialize and run the readers
+
+```powershell
+uv run --no-sync python -m scripts.materialize_natural_end_to_end_cases `
+  --source-root data/raw/upstream --run-root tmp/natural_reproduction
+uv run --no-sync python -m scripts.run_natural_end_to_end_experiment `
+  --mode reproduction --run-root tmp/natural_reproduction validate
+uv run --no-sync python -m scripts.run_natural_end_to_end_experiment `
+  --mode reproduction --run-root tmp/natural_reproduction plan-verifier
+```
+
+Validation and planning make no provider calls. Follow the
+[provider execution guide](docs/NATURAL_END_TO_END_EXPERIMENT.md#execution) to run
+the verifier, readers, and judge with your own credentials. Fresh execution binds
+receipts to this run's actual input hashes; historical receipts cannot be reused
+as authorization for it. Stage completion, model settings, and cost limits remain
+checked by the runner.
+
+## 7. Reproduction Levels
 
 | Tier | Supported path | Additional material |
 | --- | --- | --- |
@@ -172,21 +237,18 @@ separate operations:
 | Checked-in result/evidence file integrity and claim consistency | Yes | None |
 | Natural case-level aggregation, equal-source results, and case-weighted sensitivity | Yes | Tokenized `results/natural_end_to_end_case_audit/case_scores.csv` |
 | Controlled paired-exposure request construction and score aggregation | Yes | Included scenarios/targets; a complete response bundle for a new scoring run |
-| Exact historical natural rankings and post-hoc control recomputation | Archive-dependent | Excluded population, embeddings, route checkpoints, and archive implementation |
-| Historical text-verifier/provider execution replay | Archive-dependent | Excluded case/materialization and complete provider-response bundles |
-| Fresh natural-corpus/provider execution | Requires a new execution setup | Pinned upstream sources, input construction, model artifacts, credentials, and the runner's exact execution contract |
+| Natural input construction and nine-arm retrieval | Public pipeline in Section 6 | Pinned RHELM/MemOps checkouts and Qwen weights |
+| Support controls and policy sensitivity on new rankings | Public pipeline in Section 6 | This run's rankings and embeddings |
+| Fresh natural route-to-reader execution | Public reproduction mode | Materialized cases, provider access, and complete stage bundles |
+| Byte-for-byte historical ranking or provider replay | Archive-dependent | Original embeddings, rankings, or raw provider responses |
 
 The exact reported natural execution used 182,908 memories, 3,767 queries, 33,903
 route rows, and 33,903 score rows. Its source revisions, config, population,
 embedding, route, and score hashes are recorded in `PROVENANCE.md`. Those hashes
-identify the historical inputs; they do not make the inputs downloadable from this
-repository. Fetching the same upstream revisions does not alone reproduce the
-omitted construction, embeddings, rankings, or provider responses. The public
-retrieval runner accepts normalized case bundles, and natural provider runners
-require materialized cases and matching receipts in addition to upstream sources.
-No single public command currently reconstructs every historical input from a fresh
-clone. New execution outputs belong in ignored local directories and must be
-reported separately from the frozen paper results.
+identify the historical execution. The public pipeline reconstructs the inputs and
+generates new model outputs; it does not download historical caches. New execution
+outputs belong in ignored local directories and are recorded separately from the
+frozen paper results.
 
 The case-level audit exposes parsed numeric labels and SHA-256 bindings, so the public
 package can recompute source-specific intervals, the post-hoc case-weighted
@@ -202,7 +264,7 @@ The 200-output alternate-model-judge audit evaluates model outputs and is a
 separate analysis. See the [experiment guide](docs/PAPER_ALIGNMENT.md) for the
 implemented evaluations and their reproduction boundaries.
 
-## 7. Directory Contract
+## 8. Directory Contract
 
 ```text
 src/           pure evaluation library

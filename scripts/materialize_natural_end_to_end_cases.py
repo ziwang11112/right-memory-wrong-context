@@ -1,4 +1,4 @@
-"""Materialize private route-to-reader cases from the pinned public-source cache."""
+"""Materialize route-to-reader cases from pinned public sources and fresh rankings."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import sys
 import tempfile
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,8 @@ from verify_agent_memory.natural_end_to_end import (  # noqa: E402
 )
 
 DEFAULT_LEGACY_ROOT = ROOT.parent / "bomi-codex-starter"
+DEFAULT_SOURCE_ROOT = ROOT / "data" / "raw" / "upstream"
+DEFAULT_RUN_ROOT = ROOT / "tmp" / "natural_reproduction"
 DEFAULT_OUTPUT = ROOT / "tmp" / "natural_end_to_end" / "cases.jsonl.gz"
 DEFAULT_MANIFEST = ROOT / "tmp" / "natural_end_to_end" / "materialization_manifest.json"
 GLOBAL_TASK = "flat_dense/25ea22a7b2be"
@@ -110,6 +113,49 @@ def _legacy_api(legacy_root: Path) -> dict[str, object]:
     }
 
 
+def _public_api(source_root: Path, run_root: Path) -> dict[str, object]:
+    from verify_agent_memory.natural_rhelm import iter_rhelm_question_resolutions
+    from verify_agent_memory.natural_source_indices import load_rhelm_qa_index
+    from verify_agent_memory.natural_storage import load_public_api, load_route_checkpoint
+
+    return {
+        **load_public_api(source_root, run_root),
+        "SOURCE_CACHE": source_root,
+        "source_directories": {"rhelm": "rhelm", "memops": "memops"},
+        "ROUTE_BUNDLES": run_root / "route_bundles",
+        "ROUTE_CHECKPOINT_PATH": run_root / "route_checkpoint.json",
+        "load_route_checkpoint": load_route_checkpoint,
+        "iter_rhelm_question_resolutions": iter_rhelm_question_resolutions,
+        "load_rhelm_qa_index": load_rhelm_qa_index,
+    }
+
+
+def _source_directory(api: Mapping[str, object], source: str) -> Path:
+    names = api.get("source_directories", {"rhelm": "RHELM", "memops": "MemOps"})
+    return Path(api["SOURCE_CACHE"]) / str(names[source])  # type: ignore[index]
+
+
+def _public_route_record(
+    records: Sequence[Mapping[str, Any]], source: str, route_name: str
+) -> Mapping[str, Any]:
+    arms = {"flat_dense", "global_dense"} if route_name == "global" else {"namespace_dense"}
+    matches = []
+    for record in records:
+        parts = str(record.get("task_id", "")).split("/")
+        if len(parts) == 3 and parts[0] == source and parts[1] in arms:
+            matches.append(record)
+    if len(matches) != 1:
+        raise ValueError(
+            f"expected exactly one {source}/{route_name} ranking, found {len(matches)}"
+        )
+    expected_config = (GLOBAL_TASK if route_name == "global" else NAMESPACE_TASK).split("/")[1]
+    if str(matches[0]["task_id"]).split("/")[2] != expected_config:
+        raise ValueError(
+            f"{source}/{route_name} ranking configuration differs from the frozen protocol"
+        )
+    return matches[0]
+
+
 def _memory_key(source: str, memory_id: str) -> str:
     return hashlib.sha256(f"{source}|{memory_id}".encode()).hexdigest()[:24]
 
@@ -156,8 +202,7 @@ def _candidate(
 
 
 def _rhelm_gold(api: Mapping[str, object], eval_query_ids: set[str]) -> dict[str, dict[str, Any]]:
-    source_cache = Path(api["SOURCE_CACHE"])
-    data_root = source_cache / "RHELM" / "data"
+    data_root = _source_directory(api, "rhelm") / "data"
     qa_index = api["load_rhelm_qa_index"](data_root)  # type: ignore[operator]
     rows = {}
     for resolution in api["iter_rhelm_question_resolutions"](data_root):  # type: ignore[operator]
@@ -172,9 +217,8 @@ def _rhelm_gold(api: Mapping[str, object], eval_query_ids: set[str]) -> dict[str
 
 
 def _memops_gold(api: Mapping[str, object], eval_query_ids: set[str]) -> dict[str, dict[str, Any]]:
-    source_cache = Path(api["SOURCE_CACHE"])
     injected_root = (
-        source_cache / "MemOps" / "generated_result" / "4-inject_evidence_with_distractors"
+        _source_directory(api, "memops") / "generated_result" / "4-inject_evidence_with_distractors"
     )
     rows = {}
     for path in sorted(injected_root.glob("*.json")):
@@ -265,21 +309,44 @@ def _materialized_candidates(
 
 def materialize(
     *,
-    legacy_root: Path,
-    output: Path,
-    manifest_path: Path,
-    candidate_depth: int,
-    reader_memory_max_bytes: int,
+    legacy_root: Path | None = None,
+    source_root: Path | None = None,
+    run_root: Path | None = None,
+    output: Path | None = None,
+    manifest_path: Path | None = None,
+    candidate_depth: int = 20,
+    reader_memory_max_bytes: int = 8192,
     overwrite: bool = False,
 ) -> dict[str, object]:
-    """Build the exact private case bundle and a content-free integrity manifest."""
+    """Build a local text-bearing case bundle and a content-free integrity manifest."""
+    if candidate_depth != 20 or reader_memory_max_bytes != 8192:
+        raise ValueError("the natural reader protocol requires top-20 and 8192-byte memories")
+    if legacy_root is not None and (source_root is not None or run_root is not None):
+        raise ValueError("choose public source/run roots or --legacy-root, not both")
+    if legacy_root is None:
+        from verify_agent_memory.natural_storage import sample_bundle_sha256
+
+        source_root = (source_root or DEFAULT_SOURCE_ROOT).resolve()
+        run_root = (run_root or DEFAULT_RUN_ROOT).resolve()
+        output = output or run_root / "natural_end_to_end" / "cases.jsonl.gz"
+        manifest_path = (
+            manifest_path or run_root / "natural_end_to_end" / "materialization_manifest.json"
+        )
+        api = _public_api(source_root, run_root)
+    else:
+        output = output or DEFAULT_OUTPUT
+        manifest_path = manifest_path or DEFAULT_MANIFEST
+        api = _legacy_api(legacy_root.resolve())
     if not overwrite and (output.exists() or manifest_path.exists()):
         raise FileExistsError("refusing to overwrite an existing materialization")
-    api = _legacy_api(legacy_root.resolve())
     inputs = api["load_eval_inputs"](include_texts=True, include_model=False)  # type: ignore[operator]
     runtime_text = {row.item.embedding_identity: row.prepared_text for row in inputs.runtime_rows}
     checkpoint_path = Path(api["ROUTE_CHECKPOINT_PATH"])
-    checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+    checkpoint = (
+        api["load_route_checkpoint"](checkpoint_path)  # type: ignore[operator]
+        if legacy_root is None
+        else json.loads(checkpoint_path.read_text(encoding="utf-8"))
+    )
     records = {record["task_id"]: record for record in checkpoint["records"]}
     route_root = Path(api["ROUTE_BUNDLES"])
     route_hashes: dict[str, str] = {}
@@ -303,11 +370,22 @@ def materialize(
             ("global", GLOBAL_TASK),
             ("namespace", NAMESPACE_TASK),
         ):
-            record = records[f"{source}/{task_suffix}"]
-            path = route_root / record["filename"]
-            route_hashes[f"{source}/{route_name}"] = _sha256_file(path)
+            record = (
+                _public_route_record(checkpoint["records"], source, route_name)
+                if legacy_root is None
+                else records[f"{source}/{task_suffix}"]
+            )
+            path = (route_root / record["filename"]).resolve()
+            if not path.is_relative_to(route_root.resolve()):
+                raise ValueError("route bundle must remain within its declared route directory")
+            route_hash = _sha256_file(path)
+            if legacy_root is None and route_hash != record.get("sha256"):
+                raise ValueError(f"route bundle hash drifted: {source}/{route_name}")
+            route_hashes[f"{source}/{route_name}"] = route_hash
             observations = api["load_route_bundle"](path)  # type: ignore[operator]
             routes[route_name] = {observation.query_id: observation for observation in observations}
+            if len(routes[route_name]) != len(observations):
+                raise ValueError(f"route contains duplicate query IDs: {source}/{route_name}")
         if set(routes["global"]) != set(queries) or set(routes["namespace"]) != set(queries):
             raise RuntimeError("route query coverage differs from the frozen evaluation population")
 
@@ -366,8 +444,11 @@ def materialize(
     manifest = {
         "schema_version": 1,
         "protocol_id": "natural-heldout-route-to-reader-v1",
-        "status": "private_materialization_from_public_sources",
-        "legacy_runtime_commit": _git_head(legacy_root),
+        "status": (
+            "public_source_reproduction_materialization"
+            if legacy_root is None
+            else "private_materialization_from_public_sources"
+        ),
         "route_checkpoint_sha256": _sha256_file(checkpoint_path),
         "route_bundle_sha256": dict(sorted(route_hashes.items())),
         "candidate_depth": candidate_depth,
@@ -379,6 +460,14 @@ def materialize(
         "provider_calls": 0,
         "paid_calls": 0,
     }
+    if legacy_root is None:
+        manifest["source_manifest_sha256"] = _sha256_file(ROOT / "data" / "upstream_sources.json")
+        manifest["public_run_manifest_sha256"] = _sha256_file(run_root / "manifest.json")
+        manifest["retrieval_config_sha256"] = _sha256_file(run_root / "retrieval_config.json")
+        manifest["embedding_population_sha256"] = sample_bundle_sha256(inputs.population)
+        manifest.update(implementation_provenance(ROOT))
+    else:
+        manifest["legacy_runtime_commit"] = _git_head(legacy_root)
     _write_json(manifest_path, manifest)
     return manifest
 
@@ -395,17 +484,60 @@ def _git_head(root: Path) -> str:
     ).stdout.strip()
 
 
+def implementation_provenance(root: Path) -> dict[str, object]:
+    """Fingerprint public implementation files, including in a source-only ZIP."""
+    import subprocess
+
+    files = [
+        *sorted((root / "src" / "verify_agent_memory").glob("*.py")),
+        *sorted((root / "experiments").glob("natural*.json")),
+        *sorted((root / "experiments" / "prompts").glob("*.txt")),
+    ]
+    files.extend(
+        root / "scripts" / name
+        for name in (
+            "materialize_natural_end_to_end_cases.py",
+            "run_natural_end_to_end_experiment.py",
+            "run_natural_two_reader_judge.py",
+            "run_inferred_admissibility_experiment.py",
+        )
+        if (root / "scripts" / name).is_file()
+    )
+    if not files:
+        raise ValueError("no public implementation files found for provenance")
+    hashes = {path.relative_to(root).as_posix(): _sha256_file(path) for path in sorted(files)}
+    result: dict[str, object] = {
+        "implementation_source_sha256": hashlib.sha256(_canonical_bytes(hashes)).hexdigest(),
+        "implementation_file_sha256": hashes,
+    }
+    if (root / ".git").exists():
+        # Anonymous exports can rely on the source fingerprint without Git.
+        with suppress(FileNotFoundError, subprocess.CalledProcessError):
+            result["implementation_commit"] = _git_head(root)
+    return result
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--legacy-root", type=Path, default=DEFAULT_LEGACY_ROOT)
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
-    parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
+    parser.add_argument(
+        "--source-root", type=Path, help="parent of pinned rhelm/ and memops/ checkouts"
+    )
+    parser.add_argument(
+        "--run-root", type=Path, help="public retrieval run with route_checkpoint.json"
+    )
+    parser.add_argument(
+        "--legacy-root", type=Path, help="explicit historical archive compatibility mode"
+    )
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--manifest", type=Path)
     parser.add_argument("--candidate-depth", type=int, default=20)
     parser.add_argument("--reader-memory-max-bytes", type=int, default=8192)
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     result = materialize(
         legacy_root=args.legacy_root,
+        source_root=args.source_root,
+        run_root=args.run_root,
         output=args.output,
         manifest_path=args.manifest,
         candidate_depth=args.candidate_depth,

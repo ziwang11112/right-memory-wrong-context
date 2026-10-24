@@ -1,8 +1,8 @@
 """Run the frozen natural namespace false-allow and label-swap diagnostic.
 
 The public repository does not redistribute source payloads, embeddings, or route
-bundles. This bridge reads the hash-bound provenance archive named in PROVENANCE.md
-and writes content-free aggregate outputs only. It makes no provider or model call.
+bundles. This script reads a public reproduction run, or the historical provenance
+archive in compatibility mode, and writes aggregate outputs without model calls.
 """
 
 from __future__ import annotations
@@ -336,6 +336,60 @@ def _prepare_archive_imports(archive_root: Path) -> Mapping[str, object]:
     }
 
 
+def _input_bindings(
+    archive_root: Path, *, source_root: Path | None = None, run_root: Path | None = None
+) -> Mapping[str, object]:
+    if (source_root is None) != (run_root is None):
+        raise ValueError("public mode requires both --source-root and --run-root")
+    if source_root is not None and run_root is not None:
+        from verify_agent_memory.natural_storage import load_public_api
+
+        return load_public_api(source_root.resolve(), run_root.resolve())
+    import scripts as scripts_package
+
+    archive_scripts = str(archive_root / "scripts")
+    if archive_scripts not in scripts_package.__path__:
+        scripts_package.__path__.append(archive_scripts)
+    api = dict(_prepare_archive_imports(archive_root))
+    api["config_path"] = (
+        archive_root / "experiments" / "configs" / "stage3_natural_corpus_public_eval.json"
+    )
+    api["route_root"] = (
+        archive_root
+        / "data"
+        / "private"
+        / "stage3_natural_corpus_admissibility_eval"
+        / "route_bundles"
+    )
+    return api
+
+
+def _run_global_reference(
+    inputs: Any,
+    api: Mapping[str, object],
+    route_files: Mapping[tuple[str, str], Path],
+    global_config_id: str,
+) -> tuple[float, float]:
+    aggregates = []
+    for source, corpus in inputs.corpora.items():
+        memories = {m.memory_id: m for m in corpus.memories if m.split == "eval"}
+        queries = {q.query_id: q for q in corpus.queries if q.split == "eval"}
+        accumulator = Accumulator()
+        routes = api["load_route_bundle"](route_files[(source, global_config_id)])
+        for row in routes:
+            accumulator.update(
+                _score_ranking(
+                    queries[row.query_id],
+                    row.ranked_memory_ids,
+                    memories,
+                    candidates_scored=row.candidates_scored,
+                )
+            )
+        aggregates.append(accumulator.means())
+    macro = _source_macro(aggregates)
+    return float(macro["feasible_rate"]), float(macro["penalized_admissibility_upper_risk"])
+
+
 def _global_reference() -> tuple[float, float]:
     with PARETO_PATH.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
@@ -343,19 +397,18 @@ def _global_reference() -> tuple[float, float]:
     return float(row["feasible_rate"]), float(row["penalized_admissibility_upper_risk"])
 
 
-def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
+def _run(
+    archive_root: Path,
+    output_dir: Path,
+    batch_size: int,
+    *,
+    source_root: Path | None = None,
+    run_root: Path | None = None,
+) -> None:
     channels, rates, seeds, top_k = _load_protocol()
-    api = _prepare_archive_imports(archive_root)
-    old_config_path = (
-        archive_root / "experiments" / "configs" / "stage3_natural_corpus_public_eval.json"
-    )
-    route_root = (
-        archive_root
-        / "data"
-        / "private"
-        / "stage3_natural_corpus_admissibility_eval"
-        / "route_bundles"
-    )
+    api = _input_bindings(archive_root, source_root=source_root, run_root=run_root)
+    old_config_path = Path(api["config_path"])
+    route_root = Path(api["route_root"])
     old_config = json.loads(old_config_path.read_text(encoding="utf-8"))
     selected = {row["arm"]: row for row in old_config["selected_settings"]}
     global_config_id = selected["flat_dense"]["ranking_config_id"]
@@ -620,7 +673,11 @@ def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
                 summary[f"std_{metric}"] = float(values.std(ddof=1))
             summary_rows.append(summary)
 
-    global_feasible, global_risk = _global_reference()
+    global_feasible, global_risk = (
+        _global_reference()
+        if run_root is None
+        else _run_global_reference(inputs, api, route_files, global_config_id)
+    )
     break_even: dict[str, object] = {}
     for channel in channels:
         last_dominating = None
@@ -662,9 +719,15 @@ def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
     ).strip()
     manifest = {
         "schema_version": 1,
+        "execution_kind": "archive_replay" if run_root is None else "public_source_reproduction",
+        "input_run_manifest_sha256": None
+        if run_root is None
+        else _sha256_file(run_root / "manifest.json"),
         "analysis": "natural-namespace-support-expansion-v1",
         "new_repository_commit": head,
-        "old_execution_commit": "8e34e3d41c56e1699696bc27be95cdac7c9528e5",
+        "old_execution_commit": "8e34e3d41c56e1699696bc27be95cdac7c9528e5"
+        if run_root is None
+        else None,
         "protocol_sha256": _sha256_file(PROTOCOL_PATH),
         "embedding_checkpoint_sha256": _sha256_file(api["embedding_checkpoint_path"]),
         "route_bundle_sha256": dict(sorted(route_hashes.items())),
@@ -707,16 +770,29 @@ def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive-root", type=Path, default=DEFAULT_ARCHIVE)
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "tmp")
+    parser.add_argument("--source-root", type=Path)
+    parser.add_argument("--run-root", type=Path)
+    parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--batch-size", type=int, default=8)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.output_dir is None:
+        args.output_dir = (
+            args.run_root / "support_expansion" if args.run_root is not None else ROOT / "tmp"
+        )
+    return args
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     if args.batch_size < 1:
         raise ValueError("batch-size must be positive")
-    _run(args.archive_root.resolve(), args.output_dir.resolve(), args.batch_size)
+    _run(
+        args.archive_root.resolve(),
+        args.output_dir.resolve(),
+        args.batch_size,
+        source_root=args.source_root,
+        run_root=args.run_root,
+    )
     return 0
 
 

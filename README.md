@@ -86,17 +86,20 @@ CI runs these checks and validates an independently installed anonymous export.
 
 ## Release Scope
 
-The release includes the evaluation library, experiment protocols, constructed
-inputs, derived results, and verification tools. Public pair-level and tokenized
-case scores support recalculation of the corresponding aggregates and intervals.
-Historical embeddings, complete natural-corpus rankings, and raw provider responses
-are not distributed. Recreating those executions requires additional inputs and,
-where applicable, model access.
+The release includes the evaluation library, experiment protocols, public-source
+adapters, retrieval and provider runners, derived results, and verification tools.
+The natural-corpus pipeline builds experiment inputs from pinned RHELM and MemOps
+checkouts, encodes them with the specified Qwen model, and runs the nine frozen
+retrieval configurations. Its outputs feed the support diagnostics and
+route-to-reader evaluation.
+
+Public pair-level and tokenized case scores support recalculation of the reported
+aggregates and intervals. New model executions require model access; historical
+embedding caches and raw provider responses are not distributed.
 
 See the [experiment guide](docs/PAPER_ALIGNMENT.md) for code-to-paper mappings and
 the [reproducibility guide](REPRODUCIBILITY.md) for runnable commands. The repository
-covers the released experiments; it does not claim to reproduce every manuscript
-detail.
+covers the paper's core evaluation paths.
 
 ## Repository Structure
 

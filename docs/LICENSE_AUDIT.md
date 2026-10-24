@@ -33,9 +33,12 @@ content-free aggregate measurements produced by the internal provenance archive.
 
 ## Internal Source Boundary
 
-The internal source snapshot has no root `LICENSE` file. No module is copied
-wholesale. Phase 2 reimplements the small, pure evaluation surface under a new
-package structure and preserves source-file identities in `SOURCE_ARTIFACTS.yaml`.
+The original internal source snapshot has no root `LICENSE` file. The authors have
+authorized release of their experiment implementation. The public package adapts
+the source construction, retrieval, and scoring logic under its own package
+structure and preserves source-file identities in `SOURCE_ARTIFACTS.yaml`.
+Internal execution locks, private caches, and provider recovery records are not
+part of the port. This does not change the upstream data boundary above.
 
 ## Decision
 

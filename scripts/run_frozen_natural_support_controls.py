@@ -17,11 +17,10 @@ from typing import Any
 
 import numpy as np
 
-import scripts as scripts_package
 from scripts.run_frozen_natural_support_expansion import (
     _first_supported,
+    _input_bindings,
     _namespace_support_at,
-    _prepare_archive_imports,
     _sha256_file,
     _write_csv,
     _write_json,
@@ -510,22 +509,18 @@ embeddings, prompts, responses, or private payloads.
     (output_dir / OUTPUT_NAMES["readme"]).write_text(text, encoding="utf-8", newline="\n")
 
 
-def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
+def _run(
+    archive_root: Path,
+    output_dir: Path,
+    batch_size: int,
+    *,
+    source_root: Path | None = None,
+    run_root: Path | None = None,
+) -> None:
     protocol = _load_protocol()
-    archive_scripts = str(archive_root / "scripts")
-    if archive_scripts not in scripts_package.__path__:
-        scripts_package.__path__.append(archive_scripts)
-    api = _prepare_archive_imports(archive_root)
-    old_config_path = (
-        archive_root / "experiments" / "configs" / "stage3_natural_corpus_public_eval.json"
-    )
-    route_root = (
-        archive_root
-        / "data"
-        / "private"
-        / "stage3_natural_corpus_admissibility_eval"
-        / "route_bundles"
-    )
+    api = _input_bindings(archive_root, source_root=source_root, run_root=run_root)
+    old_config_path = Path(api["config_path"])
+    route_root = Path(api["route_root"])
     old_config = json.loads(old_config_path.read_text(encoding="utf-8"))
     selected = {row["arm"]: row for row in old_config["selected_settings"]}
     global_config_id = selected["flat_dense"]["ranking_config_id"]
@@ -736,21 +731,22 @@ def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
         sources=sources,
     )
 
-    reference = _pareto_reference()
-    primary = {str(row["arm"]): row for row in main_rows}
-    for arm, old_arm in (
-        ("global_dense", "global_dense"),
-        ("namespace_pre_filter", "namespace_dense"),
-    ):
-        observed = primary[arm]
-        expected = reference[old_arm]
-        actual = (
-            float(observed["mean_evidence_recall"]),
-            float(observed["mean_feasible_rate"]),
-            float(observed["mean_penalized_admissibility_upper_risk"]),
-        )
-        if any(abs(left - right) > 1e-12 for left, right in zip(actual, expected, strict=True)):
-            raise RuntimeError(f"published top-20 parity failed for {arm}")
+    if run_root is None:
+        reference = _pareto_reference()
+        primary = {str(row["arm"]): row for row in main_rows}
+        for arm, old_arm in (
+            ("global_dense", "global_dense"),
+            ("namespace_pre_filter", "namespace_dense"),
+        ):
+            observed = primary[arm]
+            expected = reference[old_arm]
+            actual = (
+                float(observed["mean_evidence_recall"]),
+                float(observed["mean_feasible_rate"]),
+                float(observed["mean_penalized_admissibility_upper_risk"]),
+            )
+            if any(abs(left - right) > 1e-12 for left, right in zip(actual, expected, strict=True)):
+                raise RuntimeError(f"published top-20 parity failed for {arm}")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     paths = {
@@ -777,9 +773,15 @@ def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
     published[readme_path.name] = {"sha256": _sha256_file(readme_path)}
     manifest = {
         "schema_version": 1,
+        "execution_kind": "archive_replay" if run_root is None else "public_source_reproduction",
+        "input_run_manifest_sha256": None
+        if run_root is None
+        else _sha256_file(run_root / "manifest.json"),
         "analysis": "natural-support-controls-v1",
         "analysis_commit": head,
-        "base_execution_commit": "8e34e3d41c56e1699696bc27be95cdac7c9528e5",
+        "base_execution_commit": "8e34e3d41c56e1699696bc27be95cdac7c9528e5"
+        if run_root is None
+        else None,
         "protocol_sha256": _sha256_file(PROTOCOL_PATH),
         "embedding_checkpoint_sha256": _sha256_file(api["embedding_checkpoint_path"]),
         "route_bundle_sha256": dict(sorted(route_hashes.items())),
@@ -787,7 +789,7 @@ def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
         "query_count": sum(
             source_totals[("global_dense", source)].query_count for source in sources
         ),
-        "group_count": len({group for _arm, _source, group in group_accumulators}),
+        "group_count": len({(source, group) for _arm, source, group in group_accumulators}),
         "global_ranking_checks": global_checks,
         "namespace_ranking_checks": namespace_checks,
         "contains_query_memory_or_group_ids": False,
@@ -815,16 +817,31 @@ def _run(archive_root: Path, output_dir: Path, batch_size: int) -> None:
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive-root", type=Path, default=DEFAULT_ARCHIVE)
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "tmp" / "support_controls")
+    parser.add_argument("--source-root", type=Path)
+    parser.add_argument("--run-root", type=Path)
+    parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--batch-size", type=int, default=8)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.output_dir is None:
+        args.output_dir = (
+            args.run_root / "support_controls"
+            if args.run_root is not None
+            else ROOT / "tmp" / "support_controls"
+        )
+    return args
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     if args.batch_size < 1:
         raise ValueError("batch-size must be positive")
-    _run(args.archive_root.resolve(), args.output_dir.resolve(), args.batch_size)
+    _run(
+        args.archive_root.resolve(),
+        args.output_dir.resolve(),
+        args.batch_size,
+        source_root=args.source_root,
+        run_root=args.run_root,
+    )
     return 0
 
 

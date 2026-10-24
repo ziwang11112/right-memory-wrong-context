@@ -7,8 +7,9 @@ before dependency, naming, license, and private-data review.
 ## PORT_AND_REFACTOR
 
 The following files are candidates for logic-level porting. They must be rewritten
-under the new package name, stripped of historical experiment names and routing
-constants, and covered by new tests:
+under the public package name, stripped of internal runtime dependencies, and
+covered by tests. Frozen scientific settings and their configuration identities
+remain explicit:
 
 ```text
 bomi/eval/stage3_admissibility_metrics.py
@@ -17,6 +18,14 @@ bomi/bench/stage3_memops_mapping.py
 bomi/bench/stage3_rhelm_evidence_resolution.py
 bomi/bench/stage3_natural_corpus_admissibility.py
 bomi/bench/stage3_natural_dev_analysis.py  # selected analysis logic only
+bomi/bench/stage3_admissibility_audit.py  # public record readers only
+bomi/bench/stage3_natural_embedding_pilot.py  # content-free input identities only
+bomi/bench/stage3_natural_embedding_store.py
+bomi/bench/stage3_natural_route_store.py
+bomi/bench/stage3_natural_dev_runtime.py  # exact retrieval operations only
+bomi/experiments/stage3_natural_dev_routing.py  # frozen configuration and stable ranks
+scripts/run_stage3_natural_corpus_embedding_pilot.py  # text preparation and encoding only
+scripts/run_stage3_natural_corpus_public_eval.py  # population and execution assembly only
 ```
 
 Required Phase 2 tests include complete method-by-query coverage, unresolved-label
@@ -24,6 +33,14 @@ bounds, rejection of `NaN` and infinity, and query-intent-sensitive lifecycle ca
 Because per-query route rows remain excluded, coverage is verified from the frozen
 execution manifest: nine selected arms times 3,767 queries must equal both 33,903
 route rows and 33,903 score rows.
+
+The public-source runtime completion adds source adapters, embedding/route stores,
+and the nine frozen retrieval configurations to the same package. It replaces
+private archive imports with explicit public source and run directories. Source
+mapping, split rules, tie breaking, and selected settings are preserved; archive
+authorization gates and private payloads are excluded. Synthetic fixtures exercise
+construction, routing, serialization, and fresh provider-run binding without model
+or API calls.
 
 ## IMPORT_AS_FROZEN_AGGREGATE
 

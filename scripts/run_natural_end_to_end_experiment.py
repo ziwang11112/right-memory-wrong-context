@@ -16,7 +16,7 @@ from collections import defaultdict, deque
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -55,9 +55,11 @@ DEFAULT_MATERIALIZATION = ROOT / "tmp" / "natural_end_to_end" / "materialization
 DEFAULT_RUNTIME = ROOT / "tmp" / "natural_end_to_end" / "provider_runtime"
 DEFAULT_OUTPUT = ROOT / "results" / "natural_end_to_end"
 DEFAULT_DOTENV = ROOT.parent / "bomi-codex-starter" / ".env"
+DEFAULT_REPRODUCTION_ROOT = ROOT / "tmp" / "natural_reproduction"
 CONTRACT_PATHS = (
     "experiments/natural_end_to_end_protocol.json",
     "experiments/natural_end_to_end_two_reader_protocol.json",
+    "experiments/natural_end_to_end_two_reader_judge_protocol.json",
     "experiments/natural_end_to_end_two_reader_analysis_protocol.json",
     "experiments/natural_end_to_end_gpt_reader_protocol.json",
     "experiments/natural_end_to_end_gpt_judge_protocol.json",
@@ -69,6 +71,8 @@ CONTRACT_PATHS = (
     "scripts/import_natural_two_reader_checkpoints.py",
     "scripts/analyze_natural_two_reader_deterministic.py",
     "scripts/run_natural_end_to_end_experiment.py",
+    "scripts/materialize_natural_end_to_end_cases.py",
+    "scripts/run_natural_two_reader_judge.py",
     "scripts/run_natural_gpt_reader_replication.py",
     "src/verify_agent_memory/inferred_admissibility.py",
     "src/verify_agent_memory/natural_end_to_end.py",
@@ -221,6 +225,22 @@ class Protocol:
     maximum_model_contract_recovery_attempts: int
     reader_incremental_hard_caps: Mapping[str, float]
     reader_fixture_hard_caps: Mapping[str, float]
+    mode: str = "historical"
+
+
+def _execution_commit(protocol: Protocol, *, require_clean: bool = False) -> str:
+    if protocol.mode == "historical":
+        return _require_clean_contract() if require_clean else _git_head()
+    try:
+        if not (ROOT / ".git").exists():
+            raise FileNotFoundError("source-only reproduction checkout")
+        commit = _git_head()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        from scripts.materialize_natural_end_to_end_cases import implementation_provenance
+
+        provenance = implementation_provenance(ROOT)
+        return f"source-sha256:{provenance['implementation_source_sha256']}"
+    return _require_clean_contract() if require_clean else commit
 
 
 def _prompt(value: object, label: str) -> str:
@@ -414,6 +434,70 @@ def load_protocol(path: Path) -> Protocol:
     )
 
 
+def bind_reproduction_protocol(
+    protocol: Protocol, *, cases_path: Path, materialization_path: Path
+) -> Protocol:
+    """Bind a fresh run to its own inputs without importing historical checkpoints.
+
+    Scientific settings, prompts and budgets come from the published protocol.
+    The derived identity includes the new materialization; it cannot reuse receipts
+    from the original experiment or from another reproduction.
+    """
+    materialization = _read_json(materialization_path)
+    if materialization.get("status") != "public_source_reproduction_materialization":
+        raise ValueError("reproduction requires a public-source materialization")
+    if materialization.get("provider_calls") != 0 or materialization.get("paid_calls") != 0:
+        raise ValueError("materialization must not contain provider execution")
+    if materialization.get("case_bundle_sha256") != _sha256_file(cases_path):
+        raise ValueError("materialized case bundle hash drifted")
+    source_manifest = ROOT / "data" / "upstream_sources.json"
+    if materialization.get("source_manifest_sha256") != _sha256_file(source_manifest):
+        raise ValueError("materialization source manifest differs from the published sources")
+    retrieval = _mapping(protocol.raw["retrieval"], "retrieval")
+    if retrieval.get("candidate_depth") != 20 or materialization.get("candidate_depth") != 20:
+        raise ValueError("reproduction requires the paper's top-20 reader candidates")
+    if protocol.target_recall != 0.8 or protocol.verifier_threshold != 0.95:
+        raise ValueError("reproduction must preserve the frozen recall and verifier thresholds")
+    route_hash = _string(materialization.get("route_checkpoint_sha256"), "route checkpoint hash")
+    if len(route_hash) != 64 or any(
+        character not in "0123456789abcdef" for character in route_hash
+    ):
+        raise ValueError("materialization route checkpoint hash is invalid")
+
+    original = protocol
+    raw = json.loads(json.dumps(protocol.raw))
+    binding: dict[str, object] = {
+        "source_protocol_id": original.protocol_id,
+        "source_protocol_sha256": original.protocol_sha256,
+        "materialization_sha256": _sha256_file(materialization_path),
+        "case_bundle_sha256": _sha256_file(cases_path),
+        "historical_checkpoint_reuse": False,
+        "historical_cost_continuation_gate": False,
+    }
+    if original.protocol_id == "natural-heldout-route-to-reader-two-reader-v3":
+        # Use the same final Haiku snapshot/request shape that scored the paper,
+        # without requiring the old 168-response recovery archive.
+        from scripts import run_natural_two_reader_judge as recovered_judge
+
+        judge_contract = recovered_judge.load_judge_protocol(recovered_judge.DEFAULT_JUDGE_PROTOCOL)
+        protocol = recovered_judge.bind_recovered_judge(judge_contract, protocol)
+        raw["judge"].update({"model": protocol.judge.model, **protocol.judge.controls})
+        raw["execution"]["maximum_output_tokens_judge"] = protocol.maximum_output_tokens_judge
+        binding["final_judge_protocol_sha256"] = judge_contract.sha256
+        binding["judge_fixture_hard_cap_usd"] = judge_contract.fixture_cap_usd
+    raw["protocol_id"] = f"{original.protocol_id}-reproduction"
+    raw["status"] = "fresh_public_source_reproduction"
+    raw["source_contract"]["route_checkpoint_sha256"] = route_hash
+    raw["reproduction_binding"] = binding
+    return replace(
+        protocol,
+        raw=raw,
+        protocol_id=raw["protocol_id"],
+        protocol_sha256=_sha256_object(raw),
+        mode="reproduction",
+    )
+
+
 def _provider_slug(binding: ProviderBinding) -> str:
     return f"{binding.provider}-{binding.model}".casefold().replace("/", "-")
 
@@ -555,7 +639,7 @@ def _load_record(
     expected = {
         "schema_version": 1,
         "protocol_sha256": protocol.protocol_sha256,
-        "implementation_commit": implementation_commit or _git_head(),
+        "implementation_commit": implementation_commit or _execution_commit(protocol),
         "stage": stage,
         "provider": binding.provider,
         "model": binding.model,
@@ -649,6 +733,15 @@ def _call_provider(
     implementation_commit: str,
 ) -> Mapping[str, Any]:
     provider_call = provider_runtime.PROVIDER_CALLS[binding.provider]
+    if (
+        protocol.mode == "reproduction"
+        and binding.provider == "Anthropic"
+        and binding.model == "claude-haiku-4-5-20251001"
+        and binding.controls == {"thinking": "disabled", "effort": "omitted"}
+    ):
+        from scripts.run_natural_two_reader_judge import _anthropic_haiku_request
+
+        provider_call = _anthropic_haiku_request
     response, usage, attempts, latency_ms, request_body_sha256 = provider_call(
         binding.runtime_binding(),
         api_key=api_key,
@@ -728,12 +821,14 @@ def _execute_specs_locked(
 ) -> dict[str, object]:
     if workers < 1:
         raise ValueError("workers must be positive")
-    implementation_commit = _require_clean_contract()
+    implementation_commit = _execution_commit(protocol, require_clean=True)
     fixture = _stage_root(runtime, "fixtures", binding) / f"{stage}.json"
     if not fixture.is_file():
         raise RuntimeError(f"provider fixture is required before {stage}: {fixture}")
     fixture_cost = 0.0
-    if stage == "reader" and incremental_cost_cap_usd is not None:
+    if protocol.mode == "reproduction" or (
+        stage == "reader" and incremental_cost_cap_usd is not None
+    ):
         fixture_receipt = _read_json(fixture)
         expected_fixture = {
             "protocol_sha256": protocol.protocol_sha256,
@@ -815,9 +910,12 @@ def _execute_specs_locked(
         )
         for request_id in pending_ids
     )
-    if spent + pending_bound > binding.hard_cap_usd:
+    total_bound = spent + pending_bound
+    if protocol.mode == "reproduction":
+        total_bound += fixture_cost + failure_budget_spent
+    if total_bound > binding.hard_cap_usd:
         raise RuntimeError(
-            f"conservative {stage} bound ${spent + pending_bound:.2f} exceeds "
+            f"conservative {stage} bound ${total_bound:.2f} exceeds "
             f"{binding.provider} cap ${binding.hard_cap_usd:.2f}"
         )
     if not pending_ids:
@@ -960,7 +1058,7 @@ def _complete_stage(
     completion = {
         "schema_version": 1,
         "protocol_sha256": protocol.protocol_sha256,
-        "implementation_commit": _git_head(),
+        "implementation_commit": _execution_commit(protocol),
         "stage": stage,
         "provider": binding.provider,
         "model": binding.model,
@@ -1064,31 +1162,12 @@ def _fixture_case() -> NaturalEndToEndCase:
     )
 
 
-def run_fixture(
-    *,
-    protocol: Protocol,
-    runtime: Path,
-    stage: str,
-    binding: ProviderBinding,
-    dotenv: Path,
-) -> dict[str, object]:
-    """Make one synthetic provider call through the exact stage adapter."""
+def _fixture_request(
+    protocol: Protocol, stage: str
+) -> tuple[CallSpec, str, int, Callable[[object, str], object]]:
+    """Build a synthetic stage request without reading credentials or calling APIs."""
     if stage not in {"verifier", "reader", "judge"}:
         raise ValueError("fixture stage must be verifier, reader, or judge")
-    implementation_commit = _require_clean_contract()
-    output = _stage_root(runtime, "fixtures", binding) / f"{stage}.json"
-    if output.is_file():
-        receipt = dict(_read_json(output))
-        if (
-            receipt.get("protocol_sha256") != protocol.protocol_sha256
-            or receipt.get("implementation_commit") != implementation_commit
-            or receipt.get("stage") != stage
-            or receipt.get("provider") != binding.provider
-            or receipt.get("model") != binding.model
-        ):
-            raise ValueError("fixture receipt binding drifted")
-        return {**receipt, "checkpoint_reused": True}
-
     case = _fixture_case()
     if stage == "verifier":
         inference_case = _verifier_case(case, protocol.verifier_memory_max_bytes)
@@ -1123,9 +1202,59 @@ def run_fixture(
         parser = _judge_parser
         system_prompt = protocol.judge_prompt
         maximum_output_tokens = protocol.maximum_output_tokens_judge
+    return spec, system_prompt, maximum_output_tokens, parser
+
+
+def plan_fixture(protocol: Protocol, stage: str, binding: ProviderBinding) -> dict[str, object]:
+    """Report the exact fixture schema and cost bound without a provider call."""
+    spec, system_prompt, maximum_output_tokens, _ = _fixture_request(protocol, stage)
+    return {
+        **_plan_stats(
+            {spec.request_id: spec},
+            binding,
+            system_prompt=system_prompt,
+            maximum_output_tokens=maximum_output_tokens,
+        ),
+        "protocol_sha256": protocol.protocol_sha256,
+        "execution_mode": protocol.mode,
+        "stage": stage,
+        "synthetic_fixture": True,
+        "provider_calls_made": 0,
+        "request_payload": json.loads(spec.payload),
+        "response_schema": spec.schema,
+        "maximum_output_tokens": maximum_output_tokens,
+        "controls": dict(binding.controls),
+    }
+
+
+def run_fixture(
+    *,
+    protocol: Protocol,
+    runtime: Path,
+    stage: str,
+    binding: ProviderBinding,
+    dotenv: Path,
+) -> dict[str, object]:
+    """Make one synthetic provider call through the exact stage adapter."""
+    spec, system_prompt, maximum_output_tokens, parser = _fixture_request(protocol, stage)
+    implementation_commit = _execution_commit(protocol, require_clean=True)
+    output = _stage_root(runtime, "fixtures", binding) / f"{stage}.json"
+    if output.is_file():
+        receipt = dict(_read_json(output))
+        if (
+            receipt.get("protocol_sha256") != protocol.protocol_sha256
+            or receipt.get("implementation_commit") != implementation_commit
+            or receipt.get("stage") != stage
+            or receipt.get("provider") != binding.provider
+            or receipt.get("model") != binding.model
+        ):
+            raise ValueError("fixture receipt binding drifted")
+        return {**receipt, "checkpoint_reused": True}
 
     fixture_cap = protocol.reader_fixture_hard_caps.get(binding.provider)
-    if stage == "reader" and fixture_cap is not None:
+    if protocol.mode == "reproduction" and stage == "judge":
+        fixture_cap = protocol.raw["reproduction_binding"].get("judge_fixture_hard_cap_usd")
+    if fixture_cap is not None and (stage == "reader" or protocol.mode == "reproduction"):
         fixture_bound = _conservative_call_cost(
             spec,
             binding,
@@ -1134,7 +1263,7 @@ def run_fixture(
         )
         if fixture_bound > fixture_cap:
             raise RuntimeError(
-                f"conservative {binding.provider} reader fixture bound "
+                f"conservative {binding.provider} {stage} fixture bound "
                 f"${fixture_bound:.4f} exceeds cap ${fixture_cap:.2f}"
             )
 
@@ -1241,6 +1370,11 @@ def _require_judge_gate(
     runtime: Path,
     analysis_protocol_path: Path = TWO_READER_ANALYSIS_PROTOCOL,
 ) -> None:
+    if protocol.mode == "reproduction":
+        # The original gate authorized additional historical spending. A fresh run
+        # instead requires its own complete reader bundles in _judge_plan and keeps
+        # the published stage/total budget guards in the executor.
+        return
     judge = _mapping(protocol.raw.get("judge"), "protocol.judge")
     if judge.get("execution_locked_until_deterministic_gate") is not True:
         return
@@ -1358,6 +1492,31 @@ def _judge_plan(
     )
 
 
+def reproduction_analysis_cases(
+    cases: Sequence[NaturalEndToEndCase], protocol: Protocol
+) -> tuple[NaturalEndToEndCase, ...]:
+    """Use the paper's outcome-independent semantic-judge sample in a fresh run."""
+    if protocol.mode != "reproduction":
+        return tuple(cases)
+    binding = _mapping(protocol.raw.get("reproduction_binding"), "reproduction binding")
+    if binding.get("source_protocol_id") != "natural-heldout-route-to-reader-two-reader-v3":
+        return tuple(cases)
+    # Input case IDs use the same source/query hash as the published construction.
+    # Ranking and response hashes are deliberately absent from sample selection.
+    rhelm = [case for case in cases if case.source == "rhelm"]
+    memops = [case for case in cases if case.source == "memops"]
+    if len(rhelm) != 523 or len(memops) != 3244:
+        raise ValueError("reproduction semantic sampling requires the frozen source population")
+    salt = "natural-two-reader-judge-v1|"
+    memops.sort(
+        key=lambda case: (
+            hashlib.sha256(f"{salt}{case.case_id}".encode()).hexdigest(),
+            case.case_id,
+        )
+    )
+    return tuple(sorted([*rhelm, *memops[:1000]], key=lambda case: case.case_id))
+
+
 def validate_runtime(
     *,
     protocol: Protocol,
@@ -1371,6 +1530,12 @@ def validate_runtime(
     retrieval = _mapping(protocol.raw["retrieval"], "retrieval")
     if materialization.get("case_bundle_sha256") != _sha256_file(cases_path):
         raise ValueError("materialized case bundle hash drifted")
+    if protocol.mode == "reproduction":
+        binding = _mapping(protocol.raw.get("reproduction_binding"), "reproduction binding")
+        if binding.get("materialization_sha256") != _sha256_file(materialization_path):
+            raise ValueError("reproduction materialization binding drifted")
+        if binding.get("case_bundle_sha256") != _sha256_file(cases_path):
+            raise ValueError("reproduction case binding drifted")
     if materialization.get("route_checkpoint_sha256") != source.get("route_checkpoint_sha256"):
         raise ValueError("materialized route checkpoint differs from protocol")
     if materialization.get("reader_memory_max_utf8_bytes") != retrieval.get(
@@ -1383,6 +1548,22 @@ def validate_runtime(
         source_name: sum(case.source == source_name for case in cases)
         for source_name in ("rhelm", "memops")
     }
+    expected_counts = _mapping(source.get("query_counts"), "source query counts")
+    if any(source_counts[name] != expected_counts.get(name) for name in source_counts):
+        raise ValueError("materialized source counts differ from protocol")
+    if materialization.get("case_count") != len(cases):
+        raise ValueError("materialization count differs from its case bundle")
+    if materialization.get("candidate_depth") != retrieval.get("candidate_depth"):
+        raise ValueError("materialized candidate depth differs from protocol")
+    for case in cases:
+        for candidates in (case.global_candidates, case.namespace_candidates):
+            if len(candidates) > retrieval["candidate_depth"]:
+                raise ValueError("materialized ranking exceeds the declared candidate depth")
+            if any(
+                len(candidate.text.encode("utf-8")) > retrieval["reader_memory_max_utf8_bytes"]
+                for candidate in candidates
+            ):
+                raise ValueError("materialized candidate exceeds the declared reader byte limit")
     verifier_specs, _ = _verifier_specs(cases, protocol)
     audit: dict[str, object] = {
         "protocol_sha256": protocol.protocol_sha256,
@@ -1396,6 +1577,7 @@ def validate_runtime(
         "verifier_request_count": len(verifier_specs),
         "reader_max_request_count_per_provider": len(cases) * len(ARMS),
         "provider_calls_made": 0,
+        "execution_mode": protocol.mode,
     }
     verifier_completion = _completion_path(runtime, "verifier", protocol.verifier)
     if verifier_completion.is_file():
@@ -1795,7 +1977,8 @@ def score(
     runtime: Path,
     output: Path,
 ) -> dict[str, object]:
-    cases = load_cases(cases_path)
+    population = load_cases(cases_path)
+    cases = reproduction_analysis_cases(population, protocol)
     rows = _score_rows(cases=cases, protocol=protocol, runtime=runtime)
     aggregates = _aggregate_rows(rows)
     paired = _paired_rows(rows)
@@ -1833,24 +2016,39 @@ def score(
         },
         "official_benchmark_result": False,
     }
+    if protocol.mode == "reproduction":
+        manifest.update(
+            {
+                "status": "complete_nonofficial_public_source_reproduction",
+                "execution_mode": protocol.mode,
+                "population_count": len(population),
+                "analysis_case_id_set_sha256": _sha256_object([case.case_id for case in cases]),
+                "reproduction_binding": protocol.raw["reproduction_binding"],
+            }
+        )
     _write_json(output / "manifest.json", manifest)
     return manifest
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--protocol", type=Path, default=DEFAULT_PROTOCOL)
-    parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
-    parser.add_argument("--materialization", type=Path, default=DEFAULT_MATERIALIZATION)
-    parser.add_argument("--runtime", type=Path, default=DEFAULT_RUNTIME)
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
-    parser.add_argument("--dotenv", type=Path, default=DEFAULT_DOTENV)
+    parser.add_argument("--mode", choices=("historical", "reproduction"), default="historical")
+    parser.add_argument(
+        "--run-root", type=Path, help="fresh public run root; requires --mode reproduction"
+    )
+    parser.add_argument("--protocol", type=Path)
+    parser.add_argument("--cases", type=Path)
+    parser.add_argument("--materialization", type=Path)
+    parser.add_argument("--runtime", type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--dotenv", type=Path)
     parser.add_argument("--workers", type=int, default=4)
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("validate")
-    fixture = subparsers.add_parser("fixture")
-    fixture.add_argument("--stage", choices=("verifier", "reader", "judge"), required=True)
-    fixture.add_argument("--provider")
+    for command in ("fixture", "plan-fixture"):
+        fixture = subparsers.add_parser(command)
+        fixture.add_argument("--stage", choices=("verifier", "reader", "judge"), required=True)
+        fixture.add_argument("--provider")
     subparsers.add_parser("plan-verifier")
     subparsers.add_parser("execute-verifier")
     subparsers.add_parser("plan-readers")
@@ -1861,7 +2059,28 @@ def main() -> None:
     subparsers.add_parser("score")
     args = parser.parse_args()
 
+    if args.mode == "reproduction":
+        run_root = (args.run_root or DEFAULT_REPRODUCTION_ROOT).resolve() / "natural_end_to_end"
+        args.protocol = args.protocol or TWO_READER_PROTOCOL
+        args.cases = args.cases or run_root / "cases.jsonl.gz"
+        args.materialization = args.materialization or run_root / "materialization_manifest.json"
+        args.runtime = args.runtime or run_root / "provider_runtime"
+        args.output = args.output or run_root / "results"
+        args.dotenv = args.dotenv or ROOT / ".env"
+    else:
+        if args.run_root is not None:
+            parser.error("--run-root requires --mode reproduction")
+        args.protocol = args.protocol or DEFAULT_PROTOCOL
+        args.cases = args.cases or DEFAULT_CASES
+        args.materialization = args.materialization or DEFAULT_MATERIALIZATION
+        args.runtime = args.runtime or DEFAULT_RUNTIME
+        args.output = args.output or DEFAULT_OUTPUT
+        args.dotenv = args.dotenv or DEFAULT_DOTENV
     protocol = load_protocol(args.protocol)
+    if args.mode == "reproduction":
+        protocol = bind_reproduction_protocol(
+            protocol, cases_path=args.cases, materialization_path=args.materialization
+        )
     validation = validate_runtime(
         protocol=protocol,
         cases_path=args.cases,
@@ -1872,22 +2091,27 @@ def main() -> None:
         result = validation
     else:
         cases = load_cases(args.cases)
-        if args.command == "fixture":
+        if args.command in {"fixture", "plan-fixture"}:
             if args.stage == "verifier":
                 binding = protocol.verifier
             elif args.stage == "judge":
-                _require_judge_gate(protocol, args.runtime)
+                if args.command == "fixture":
+                    _require_judge_gate(protocol, args.runtime)
                 binding = protocol.judge
             else:
                 if not args.provider:
                     raise ValueError("reader fixture requires --provider")
                 binding = _reader_binding(protocol, args.provider)
-            result = run_fixture(
-                protocol=protocol,
-                runtime=args.runtime,
-                stage=args.stage,
-                binding=binding,
-                dotenv=args.dotenv,
+            result = (
+                plan_fixture(protocol, args.stage, binding)
+                if args.command == "plan-fixture"
+                else run_fixture(
+                    protocol=protocol,
+                    runtime=args.runtime,
+                    stage=args.stage,
+                    binding=binding,
+                    dotenv=args.dotenv,
+                )
             )
         elif args.command in {"plan-verifier", "execute-verifier"}:
             specs, inference_cases = _verifier_specs(cases, protocol)
@@ -1951,7 +2175,7 @@ def main() -> None:
         elif args.command in {"plan-judge", "execute-judge"}:
             _require_judge_gate(protocol, args.runtime)
             specs, _assignments, _responses, _reader_assignments, _scores = _judge_plan(
-                cases,
+                reproduction_analysis_cases(cases, protocol),
                 protocol,
                 args.runtime,
             )

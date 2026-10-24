@@ -33,6 +33,16 @@ REQUIRED_PATHS = {
     "results/natural_end_to_end_case_audit/source_specific_deltas.csv",
     "evidence/README.md",
     "tests/fixtures/retrieval_cases.jsonl",
+    "scripts/run_public_natural_retrieval.py",
+    "scripts/materialize_natural_end_to_end_cases.py",
+    "scripts/run_natural_end_to_end_experiment.py",
+    "src/verify_agent_memory/natural_corpus.py",
+    "src/verify_agent_memory/natural_inputs.py",
+    "src/verify_agent_memory/natural_memops.py",
+    "src/verify_agent_memory/natural_retrieval.py",
+    "src/verify_agent_memory/natural_rhelm.py",
+    "src/verify_agent_memory/natural_source_indices.py",
+    "src/verify_agent_memory/natural_storage.py",
 }
 FORBIDDEN_PREFIXES = (
     "paper/",
